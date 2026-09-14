@@ -134,7 +134,8 @@ Generated reference documentation for every resource is in [`docs/`](docs/index.
 
 The two Move resources need the [Move](https://github.com/exeldro/obs-move-transition)
 plugin installed in OBS; declare it with `obs_plugin` so a missing install is a plan
-error rather than a runtime surprise.
+error rather than a runtime surprise. Support for further plugins is added to this
+provider the same way; see [docs/adding-a-plugin.md](docs/adding-a-plugin.md).
 
 ## How writes work
 
