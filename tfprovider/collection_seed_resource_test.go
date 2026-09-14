@@ -17,7 +17,7 @@ import (
 func collectionSeedFixture(t *testing.T) collectionSeedModel {
 	t.Helper()
 	dir := t.TempDir()
-	return collectionSeedModel{Name: types.StringValue("Reference Hierarchy Lab"), Directory: types.StringValue(dir), Path: types.StringValue(filepath.Join(dir, "Mini_Arross_Office_Hierarchy_Lab.json"))}
+	return collectionSeedModel{Name: types.StringValue("Reference Hierarchy Lab"), Directory: types.StringValue(dir), Path: types.StringValue(filepath.Join(dir, "Reference_Hierarchy_Lab.json"))}
 }
 func seedStopped(context.Context) error { return nil }
 func seedWrite(t *testing.T, path string, raw map[string]any) {
