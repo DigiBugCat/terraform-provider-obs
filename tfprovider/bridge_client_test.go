@@ -34,7 +34,7 @@ func bridgeOuter(outcome string, attempted, verified bool) map[string]any {
 		code = outcome + "_code"
 	}
 	return map[string]any{"responseData": map[string]any{
-		"contractVersion": 1.0, "bridgeVersion": bridgeSupportedVersion, "requestType": "CreateGroup",
+		"contractVersion": 1.0, "bridgeVersion": bridgeTestVersion, "requestType": "CreateGroup",
 		"clientOperationId": "apply-1/group", "outcome": outcome, "code": code, "message": "result",
 		"mutationAttempted": attempted, "postconditionVerified": verified, "result": map[string]any{"group": map[string]any{}},
 	}}
@@ -79,7 +79,7 @@ func TestBridgeCapabilitiesRequiresExactCollectionVersionsOutputsAndRequest(t *t
 	if _, err := bridgeCapabilities(context.Background(), f, "Lab", "CreateGroup", true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := bridgeCapabilities(context.Background(), f, "Wrong", "CreateGroup", true); err == nil || !strings.Contains(err.Error(), "mismatch") {
+	if _, err := bridgeCapabilities(context.Background(), f, "Wrong", "CreateGroup", true); err == nil || !strings.Contains(err.Error(), "currentSceneCollectionName") {
 		t.Fatalf("wrong collection err=%v", err)
 	}
 	if _, err := bridgeCapabilities(context.Background(), f, "Lab", "Ungroup", true); err == nil || !strings.Contains(err.Error(), "does not advertise") {
@@ -89,7 +89,7 @@ func TestBridgeCapabilitiesRequiresExactCollectionVersionsOutputsAndRequest(t *t
 
 func testCapabilitiesEnvelope() map[string]any {
 	return map[string]any{"responseData": map[string]any{
-		"contractVersion": 1.0, "bridgeVersion": bridgeSupportedVersion, "requestType": "GetCapabilities", "clientOperationId": "",
+		"contractVersion": 1.0, "bridgeVersion": bridgeTestVersion, "requestType": "GetCapabilities", "clientOperationId": "",
 		"outcome": "completed", "code": "ok", "message": "capabilities", "mutationAttempted": false, "postconditionVerified": true,
 		"result": testCapabilitiesResult("CreateGroup"),
 	}}
@@ -98,7 +98,7 @@ func testCapabilitiesEnvelope() map[string]any {
 func testCapabilitiesResult(requestType string) map[string]any {
 	mutation := bridgeRequestRequiresAbsoluteRuntime(requestType)
 	return map[string]any{
-		"vendorName": "obstf", "contractVersion": 1.0, "bridgeVersion": bridgeSupportedVersion,
+		"vendorName": "obstf", "contractVersion": 1.0, "bridgeVersion": bridgeTestVersion,
 		"currentSceneCollectionName": "Lab", "obsVersion": "32.2.2", "obsWebSocketApiVersion": 3.0,
 		"platform": "macos", "architecture": "arm64", "outputStateObserved": true,
 		"coordinateModeKnown": true, "absoluteCoordinates": true, "mainCanvasKnown": true, "baseWidth": 1920.0, "baseHeight": 1080.0,
@@ -165,18 +165,18 @@ func TestUpdateBridgeItemRefusesRelativeBeforeOrdinarySetter(t *testing.T) {
 func TestGroupAnchorRepairRefusesRelativeBeforeCreateSceneItem(t *testing.T) {
 	ctx := context.Background()
 	q := &queuedRequester{responses: map[string][]map[string]any{
-		"GetSceneCollectionList": {{"currentSceneCollectionName": lunaLifecycleCollection}},
-		"GetSceneList":           {lunaLifecycleSceneList()},
-		"GetGroupList":           {{"groups": []any{lunaLifecycleGroupName}}},
+		"GetSceneCollectionList": {{"currentSceneCollectionName": groupFixtureCollection}},
+		"GetSceneList":           {groupFixtureSceneList()},
+		"GetGroupList":           {{"groups": []any{groupFixtureGroupName}}},
 		"GetVersion":             {testOrdinaryVersion()},
 		"CallVendorRequest":      {relativeCapabilitiesEnvelope("GetGroup")},
 	}}
-	stateModel := lunaLifecycleGroupModel(7, "")
-	planModel := lunaLifecycleGroupModel(7, lunaLifecycleSceneName)
-	plan := lunaLifecycleSchemaAndPlan(t, ctx, lunaLifecycleGroupSchema(ctx), planModel)
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, lunaLifecycleGroupSchema(ctx), planModel)}
+	stateModel := groupFixtureGroupModel(7, "")
+	planModel := groupFixtureGroupModel(7, groupFixtureSceneName)
+	plan := groupFixtureSchemaAndPlan(t, ctx, groupFixtureGroupSchema(ctx), planModel)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, groupFixtureGroupSchema(ctx), planModel)}
 	resourceUnderTest := &groupResource{client: &client{testRequester: q}}
-	resourceUnderTest.Update(ctx, resource.UpdateRequest{Plan: plan, State: lunaLifecycleSchemaAndState(t, ctx, lunaLifecycleGroupSchema(ctx), stateModel)}, &response)
+	resourceUnderTest.Update(ctx, resource.UpdateRequest{Plan: plan, State: groupFixtureSchemaAndState(t, ctx, groupFixtureGroupSchema(ctx), stateModel)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("relative-mode anchor repair was accepted")
 	}

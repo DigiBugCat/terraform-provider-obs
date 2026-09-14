@@ -199,14 +199,14 @@ func TestCollectionSeedTerraformCallbacksRetainGraphAndRemoveMissingState(t *tes
 	r := &collectionSeedResource{stopped: seedStopped}
 	var sc resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)
 	created := resource.CreateResponse{State: state}
-	r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m)}, &created)
+	r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m)}, &created)
 	if created.Diagnostics.HasError() {
 		t.Fatal(created.Diagnostics)
 	}
 	var got collectionSeedModel
-	lunaLifecycleRequireState(t, ctx, created.State, &got)
+	groupFixtureRequireState(t, ctx, created.State, &got)
 	if got.ID.IsNull() || got.ID.IsUnknown() {
 		t.Fatal("missing created identity")
 	}

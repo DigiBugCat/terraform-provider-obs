@@ -27,7 +27,7 @@ type genericSourceFake struct {
 	index                                                   int64
 	transform                                               transformModel
 	available                                               []any
-	calls                                                   []lunaLifecycleCall
+	calls                                                   []groupFixtureCall
 	fail                                                    string
 }
 
@@ -35,7 +35,7 @@ func newGenericSourceFake() *genericSourceFake {
 	return &genericSourceFake{name: "Plugin", kind: "plugin_input_v2", settings: map[string]any{"private": "untouched"}, defaults: map[string]any{"gain": float64(1)}, itemID: 7, enabled: true, transform: transformFromNative(map[string]any{"scaleX": 1., "scaleY": 1., "alignment": 5., "boundsType": "OBS_BOUNDS_NONE"}), available: []any{"plugin_input_v2"}}
 }
 func (f *genericSourceFake) Req(_ context.Context, typ string, data map[string]any) (map[string]any, error) {
-	f.calls = append(f.calls, lunaLifecycleCall{typ: typ, data: data})
+	f.calls = append(f.calls, groupFixtureCall{typ: typ, data: data})
 	if f.fail == typ {
 		return nil, fmt.Errorf("injected %s failure", typ)
 	}
@@ -144,11 +144,11 @@ func genericSourceTestSchema() schema.Schema {
 }
 func genericSourceTestState(t *testing.T, m genericSourceModel) tfsdk.State {
 	t.Helper()
-	return lunaLifecycleSchemaAndState(t, context.Background(), genericSourceTestSchema(), m)
+	return groupFixtureSchemaAndState(t, context.Background(), genericSourceTestSchema(), m)
 }
 func genericSourceTestPlan(t *testing.T, m genericSourceModel) tfsdk.Plan {
 	t.Helper()
-	return lunaLifecycleSchemaAndPlan(t, context.Background(), genericSourceTestSchema(), m)
+	return groupFixtureSchemaAndPlan(t, context.Background(), genericSourceTestSchema(), m)
 }
 
 func TestGenericSourceCRUDOverlayAndProjection(t *testing.T) {
@@ -165,7 +165,7 @@ func TestGenericSourceCRUDOverlayAndProjection(t *testing.T) {
 		t.Fatal("unmanaged setting overwritten")
 	}
 	var created genericSourceModel
-	lunaLifecycleRequireState(t, ctx, cr.State, &created)
+	groupFixtureRequireState(t, ctx, cr.State, &created)
 	f.calls = nil
 	rr := resource.ReadResponse{State: cr.State}
 	r.Read(ctx, resource.ReadRequest{State: cr.State}, &rr)
@@ -173,7 +173,7 @@ func TestGenericSourceCRUDOverlayAndProjection(t *testing.T) {
 		t.Fatal(rr.Diagnostics)
 	}
 	var read genericSourceModel
-	lunaLifecycleRequireState(t, ctx, rr.State, &read)
+	groupFixtureRequireState(t, ctx, rr.State, &read)
 	if read.SettingsJSON != m.SettingsJSON {
 		t.Fatal("read canonicalized unchanged JSON or adopted unknown fields")
 	}
@@ -186,7 +186,7 @@ func TestGenericSourceCRUDOverlayAndProjection(t *testing.T) {
 	if rr.Diagnostics.HasError() {
 		t.Fatal(rr.Diagnostics)
 	}
-	lunaLifecycleRequireState(t, ctx, rr.State, &read)
+	groupFixtureRequireState(t, ctx, rr.State, &read)
 	if read.SettingsJSON.ValueString() != "{\"gain\":3}" {
 		t.Fatal(read.SettingsJSON)
 	}
@@ -295,7 +295,7 @@ func TestGenericSourceCreateRetainsAcknowledgedIdentity(t *testing.T) {
 				t.Fatal("expected failure")
 			}
 			var got genericSourceModel
-			lunaLifecycleRequireState(t, ctx, resp.State, &got)
+			groupFixtureRequireState(t, ctx, resp.State, &got)
 			if got.InputUUID.ValueString() != "input-1" || got.AnchorItemID.ValueInt64() != 7 || got.ID.IsUnknown() {
 				t.Fatal("lost acknowledged identity")
 			}
@@ -318,7 +318,7 @@ func TestGenericSourceMissingAnchorRepairRetainsNewIdentity(t *testing.T) {
 		t.Fatal(rr.Diagnostics)
 	}
 	var read genericSourceModel
-	lunaLifecycleRequireState(t, ctx, rr.State, &read)
+	groupFixtureRequireState(t, ctx, rr.State, &read)
 	if !read.AnchorSceneName.IsNull() {
 		t.Fatal("missing anchor not represented")
 	}
@@ -330,7 +330,7 @@ func TestGenericSourceMissingAnchorRepairRetainsNewIdentity(t *testing.T) {
 		t.Fatal("expected interruption")
 	}
 	var got genericSourceModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.AnchorItemID.ValueInt64() != 8 || !strings.HasSuffix(got.ID.ValueString(), "|8") {
 		t.Fatal("repair identity lost")
 	}
@@ -356,7 +356,7 @@ func TestGenericSourceImportOwnsNoSettings(t *testing.T) {
 			t.Fatal(resp.Diagnostics)
 		}
 		var got genericSourceModel
-		lunaLifecycleRequireState(t, ctx, resp.State, &got)
+		groupFixtureRequireState(t, ctx, resp.State, &got)
 		if got.SettingsJSON.ValueString() != "{}" {
 			t.Fatal("import must not adopt all plugin settings")
 		}
@@ -371,34 +371,16 @@ func TestTerraformCLIGenericSourceLifecycle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CLI regression")
 	}
-	root, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	tf := filepath.Join(root, ".tools/terraform/1.15.7/terraform")
-	if _, err := os.Stat(tf); err != nil {
-		t.Skip(err)
-	}
+	root, tf := pinnedTerraform(t)
 	f := newGenericSourceFake()
-	server := newGenericFilterWebsocketServer(t, f)
+	server := newFakeOBSWebsocketServer(t, f)
 	u, err := url.Parse(server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	work := t.TempDir()
-	providers := filepath.Join(work, "providers")
-	if err := os.Mkdir(providers, 0700); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", filepath.Join(providers, "terraform-provider-obs"), ".")
-	cmd.Dir = root
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build %v: %s", err, out)
-	}
-	rc := filepath.Join(work, "terraform.rc")
-	if err := os.WriteFile(rc, []byte(fmt.Sprintf(`provider_installation { dev_overrides { "registry.terraform.io/digibugcat/obs" = %q } direct {} }`, providers)), 0600); err != nil {
-		t.Fatal(err)
-	}
+	providers := builtProvider(t, root)
+	rc := writeDevOverrides(t, work, providers)
 	config := fmt.Sprintf(`terraform {
  required_providers { obs = { source = "digibugcat/obs" } }
 }

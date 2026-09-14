@@ -17,56 +17,59 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-type lunaTransformWireCall struct {
+type transformWireCall struct {
 	typ  string
 	data map[string]any
 }
 
-// lunaTransformWireCaptureRequester is intentionally a Resource-callback
+// transformWireCaptureRequester is intentionally a Resource-callback
 // seam, rather than an encoder fixture. It supplies the read/guard replies
 // needed by groupResource.Update and records the direct OBS setter requests
 // sent after those replies.
-type lunaTransformWireCaptureRequester struct {
+type transformWireCaptureRequester struct {
 	initial   bridgePlacementModel
 	settled   bridgePlacementModel
 	groupRead int
-	calls     []lunaTransformWireCall
+	calls     []transformWireCall
 }
 
-func (r *lunaTransformWireCaptureRequester) Req(_ context.Context, typ string, data map[string]any) (map[string]any, error) {
-	r.calls = append(r.calls, lunaTransformWireCall{typ: typ, data: data})
+func (r *transformWireCaptureRequester) Req(_ context.Context, typ string, data map[string]any) (map[string]any, error) {
+	r.calls = append(r.calls, transformWireCall{typ: typ, data: data})
 	switch typ {
 	case "GetSceneCollectionList":
-		return map[string]any{"currentSceneCollectionName": lunaLifecycleCollection}, nil
+		return map[string]any{"currentSceneCollectionName": groupFixtureCollection}, nil
 	case "GetSceneList":
-		return lunaLifecycleSceneList(), nil
+		return groupFixtureSceneList(), nil
 	case "GetVersion":
-		return lunaTransformWireVersion(), nil
+		return transformWireVersion(), nil
 	case "GetVideoSettings":
 		return map[string]any{"baseWidth": 1920.0, "baseHeight": 1080.0}, nil
 	case "CallVendorRequest":
 		requestType := stringValue(data["requestType"])
 		switch requestType {
 		case "GetCapabilities":
-			return lunaTransformWireEnvelope(requestType, lunaLifecycleCapabilities([]string{"GetGroup"})), nil
+			return transformWireEnvelope(requestType, groupFixtureCapabilities([]string{"GetGroup"})), nil
 		case "GetGroup":
 			placement := r.initial
 			if r.groupRead > 0 {
 				placement = r.settled
 			}
 			r.groupRead++
-			return lunaTransformWireEnvelope(requestType, lunaLifecycleGroupResult(7, lunaLifecycleGroupUUID, lunaLifecycleGroupName, placement, []any{})), nil
+			return transformWireEnvelope(requestType, groupFixtureGroupResult(7, groupFixtureGroupUUID, groupFixtureGroupName, placement, []any{})), nil
 		default:
 			return nil, fmt.Errorf("unexpected bridge request %s", requestType)
 		}
 	case "SetSceneItemEnabled", "SetSceneItemLocked", "SetSceneItemTransform", "SetSceneItemIndex":
 		return map[string]any{}, nil
 	default:
+		if typ == "GetSceneItemList" || typ == "GetGroupSceneItemList" {
+			return scriptedContainerListDefault(), nil
+		}
 		return nil, fmt.Errorf("unexpected direct request %s", typ)
 	}
 }
 
-func lunaTransformWireVersion() map[string]any {
+func transformWireVersion() map[string]any {
 	return map[string]any{
 		"obsVersion":          "32.2.2",
 		"obsWebSocketVersion": "5.7.4",
@@ -77,10 +80,10 @@ func lunaTransformWireVersion() map[string]any {
 	}
 }
 
-func lunaTransformWireEnvelope(requestType string, result map[string]any) map[string]any {
+func transformWireEnvelope(requestType string, result map[string]any) map[string]any {
 	return map[string]any{"responseData": map[string]any{
 		"contractVersion":       float64(bridgeContractVersion),
-		"bridgeVersion":         bridgeSupportedVersion,
+		"bridgeVersion":         bridgeTestVersion,
 		"requestType":           requestType,
 		"clientOperationId":     "",
 		"outcome":               "completed",
@@ -92,7 +95,7 @@ func lunaTransformWireEnvelope(requestType string, result map[string]any) map[st
 	}}
 }
 
-func lunaTransformWireClonePlacement(in bridgePlacementModel) bridgePlacementModel {
+func transformWireClonePlacement(in bridgePlacementModel) bridgePlacementModel {
 	out := in
 	if in.Transform != nil {
 		transform := *in.Transform
@@ -101,36 +104,36 @@ func lunaTransformWireClonePlacement(in bridgePlacementModel) bridgePlacementMod
 	return out
 }
 
-func lunaTransformWireRunGroupUpdate(t *testing.T, old, want bridgePlacementModel) (*lunaTransformWireCaptureRequester, *resource.UpdateResponse) {
+func transformWireRunGroupUpdate(t *testing.T, old, want bridgePlacementModel) (*transformWireCaptureRequester, *resource.UpdateResponse) {
 	t.Helper()
 	ctx := context.Background()
-	stateModel := lunaLifecycleGroupModel(7, lunaLifecycleSceneName)
+	stateModel := groupFixtureGroupModel(7, groupFixtureSceneName)
 	stateModel.Placement = func() *bridgePlacementModel {
-		placement := lunaTransformWireClonePlacement(old)
+		placement := transformWireClonePlacement(old)
 		return &placement
 	}()
-	planModel := lunaLifecycleGroupModel(7, lunaLifecycleSceneName)
+	planModel := groupFixtureGroupModel(7, groupFixtureSceneName)
 	planModel.Placement = func() *bridgePlacementModel {
-		placement := lunaTransformWireClonePlacement(want)
+		placement := transformWireClonePlacement(want)
 		return &placement
 	}()
 
-	sc := lunaLifecycleGroupSchema(ctx)
-	requestPlan := lunaLifecycleSchemaAndPlan(t, ctx, sc, planModel)
-	response := &resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, planModel)}
-	capture := &lunaTransformWireCaptureRequester{
-		initial: lunaTransformWireClonePlacement(old),
-		settled: lunaTransformWireClonePlacement(want),
+	sc := groupFixtureGroupSchema(ctx)
+	requestPlan := groupFixtureSchemaAndPlan(t, ctx, sc, planModel)
+	response := &resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, planModel)}
+	capture := &transformWireCaptureRequester{
+		initial: transformWireClonePlacement(old),
+		settled: transformWireClonePlacement(want),
 	}
 	(&groupResource{client: &client{testRequester: capture}}).Update(ctx, resource.UpdateRequest{
 		Plan:  requestPlan,
-		State: lunaLifecycleSchemaAndState(t, ctx, sc, stateModel),
+		State: groupFixtureSchemaAndState(t, ctx, sc, stateModel),
 	}, response)
 	return capture, response
 }
 
-func lunaTransformWireDirectMutations(capture *lunaTransformWireCaptureRequester) []lunaTransformWireCall {
-	var out []lunaTransformWireCall
+func transformWireDirectMutations(capture *transformWireCaptureRequester) []transformWireCall {
+	var out []transformWireCall
 	for _, call := range capture.calls {
 		switch call.typ {
 		case "SetSceneItemEnabled", "SetSceneItemLocked", "SetSceneItemTransform", "SetSceneItemIndex":
@@ -140,7 +143,7 @@ func lunaTransformWireDirectMutations(capture *lunaTransformWireCaptureRequester
 	return out
 }
 
-func lunaTransformWireDecodeObject(t *testing.T, raw map[string]any) map[string]any {
+func transformWireDecodeObject(t *testing.T, raw map[string]any) map[string]any {
 	t.Helper()
 	encoded, err := json.Marshal(raw)
 	if err != nil {
@@ -155,7 +158,7 @@ func lunaTransformWireDecodeObject(t *testing.T, raw map[string]any) map[string]
 	return decoded
 }
 
-func lunaTransformWireAssertKeys(t *testing.T, got map[string]any, included, omitted []string) {
+func transformWireAssertKeys(t *testing.T, got map[string]any, included, omitted []string) {
 	t.Helper()
 	want := make(map[string]bool, len(included))
 	for _, key := range included {
@@ -174,7 +177,7 @@ func lunaTransformWireAssertKeys(t *testing.T, got map[string]any, included, omi
 	}
 }
 
-func lunaTransformWireAssertNumber(t *testing.T, object map[string]any, key string, want float64) {
+func transformWireAssertNumber(t *testing.T, object map[string]any, key string, want float64) {
 	t.Helper()
 	raw, ok := object[key]
 	if !ok {
@@ -192,31 +195,31 @@ func lunaTransformWireAssertNumber(t *testing.T, object map[string]any, key stri
 	}
 }
 
-func lunaTransformWireAssertNumericTypes(t *testing.T, object map[string]any, expected map[string]float64) {
+func transformWireAssertNumericTypes(t *testing.T, object map[string]any, expected map[string]float64) {
 	t.Helper()
 	for key, want := range expected {
-		lunaTransformWireAssertNumber(t, object, key, want)
+		transformWireAssertNumber(t, object, key, want)
 	}
 }
 
-func TestLunaTransformWireGroupUpdateOmitsRawNoneBounds(t *testing.T) {
-	old := lunaTransformWireClonePlacement(lunaLifecyclePlacement())
-	want := lunaTransformWireClonePlacement(old)
+func TestTransformWireGroupUpdateOmitsRawNoneBounds(t *testing.T) {
+	old := transformWireClonePlacement(groupFixturePlacement())
+	want := transformWireClonePlacement(old)
 	want.Transform.X = types.Float64Value(40)
 
-	capture, response := lunaTransformWireRunGroupUpdate(t, old, want)
+	capture, response := transformWireRunGroupUpdate(t, old, want)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("NONE transform update diagnostics: %v", response.Diagnostics)
 	}
-	mutations := lunaTransformWireDirectMutations(capture)
+	mutations := transformWireDirectMutations(capture)
 	if len(mutations) != 1 || mutations[0].typ != "SetSceneItemTransform" {
 		t.Fatalf("direct mutations=%#v, want one SetSceneItemTransform", mutations)
 	}
 	data := mutations[0].data
-	if stringValue(data["sceneName"]) != lunaLifecycleSceneName || int64Value(data["sceneItemId"]) != 7 {
-		t.Fatalf("setter identity=%#v, want scene %q item 7", data, lunaLifecycleSceneName)
+	if stringValue(data["sceneName"]) != groupFixtureSceneName || int64Value(data["sceneItemId"]) != 7 {
+		t.Fatalf("setter identity=%#v, want scene %q item 7", data, groupFixtureSceneName)
 	}
-	outerWire := lunaTransformWireDecodeObject(t, data)
+	outerWire := transformWireDecodeObject(t, data)
 	if _, ok := outerWire["sceneItemId"].(json.Number); !ok {
 		t.Fatalf("sceneItemId JSON type=%T, want number", outerWire["sceneItemId"])
 	}
@@ -225,9 +228,9 @@ func TestLunaTransformWireGroupUpdateOmitsRawNoneBounds(t *testing.T) {
 		t.Fatalf("setter omitted sceneItemTransform: %#v", data)
 	}
 	included := []string{"positionX", "positionY", "scaleX", "scaleY", "rotation", "alignment", "boundsType", "boundsAlignment", "cropToBounds", "cropLeft", "cropTop", "cropRight", "cropBottom"}
-	lunaTransformWireAssertKeys(t, transform, included, []string{"boundsWidth", "boundsHeight", "sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
-	wire := lunaTransformWireDecodeObject(t, transform)
-	lunaTransformWireAssertNumericTypes(t, wire, map[string]float64{
+	transformWireAssertKeys(t, transform, included, []string{"boundsWidth", "boundsHeight", "sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
+	wire := transformWireDecodeObject(t, transform)
+	transformWireAssertNumericTypes(t, wire, map[string]float64{
 		"positionX": 40, "positionY": 0, "scaleX": 1, "scaleY": 1, "rotation": 0,
 		"alignment": 5, "boundsAlignment": 0, "cropLeft": 0, "cropTop": 0, "cropRight": 0, "cropBottom": 0,
 	})
@@ -247,7 +250,7 @@ func TestLunaTransformWireGroupUpdateOmitsRawNoneBounds(t *testing.T) {
 	}
 }
 
-func TestLunaTransformWireGroupUpdatePreservesPositiveNoneDimensionIndividually(t *testing.T) {
+func TestTransformWireGroupUpdatePreservesPositiveNoneDimensionIndividually(t *testing.T) {
 	for _, tc := range []struct {
 		name                        string
 		width, height               float64
@@ -257,17 +260,17 @@ func TestLunaTransformWireGroupUpdatePreservesPositiveNoneDimensionIndividually(
 		{name: "zero_width_positive_height", width: 0, height: 360, includeWidth: false, includeHeight: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			old := lunaTransformWireClonePlacement(lunaLifecyclePlacement())
-			want := lunaTransformWireClonePlacement(old)
+			old := transformWireClonePlacement(groupFixturePlacement())
+			want := transformWireClonePlacement(old)
 			want.Transform.X = types.Float64Value(40)
 			want.Transform.BoundsWidth = types.Float64Value(tc.width)
 			want.Transform.BoundsHeight = types.Float64Value(tc.height)
 
-			capture, response := lunaTransformWireRunGroupUpdate(t, old, want)
+			capture, response := transformWireRunGroupUpdate(t, old, want)
 			if response.Diagnostics.HasError() {
 				t.Fatalf("NONE dimension update diagnostics: %v", response.Diagnostics)
 			}
-			mutations := lunaTransformWireDirectMutations(capture)
+			mutations := transformWireDirectMutations(capture)
 			if len(mutations) != 1 || mutations[0].typ != "SetSceneItemTransform" {
 				t.Fatalf("direct mutations=%#v, want one SetSceneItemTransform", mutations)
 			}
@@ -284,17 +287,17 @@ func TestLunaTransformWireGroupUpdatePreservesPositiveNoneDimensionIndividually(
 			} else {
 				omitted = append(omitted, "boundsHeight")
 			}
-			lunaTransformWireAssertKeys(t, transform, included, omitted)
-			wire := lunaTransformWireDecodeObject(t, transform)
-			lunaTransformWireAssertNumericTypes(t, wire, map[string]float64{
+			transformWireAssertKeys(t, transform, included, omitted)
+			wire := transformWireDecodeObject(t, transform)
+			transformWireAssertNumericTypes(t, wire, map[string]float64{
 				"positionX": 40, "positionY": 0, "scaleX": 1, "scaleY": 1, "rotation": 0,
 				"alignment": 5, "boundsAlignment": 0, "cropLeft": 0, "cropTop": 0, "cropRight": 0, "cropBottom": 0,
 			})
 			if tc.includeWidth {
-				lunaTransformWireAssertNumber(t, wire, "boundsWidth", tc.width)
+				transformWireAssertNumber(t, wire, "boundsWidth", tc.width)
 			}
 			if tc.includeHeight {
-				lunaTransformWireAssertNumber(t, wire, "boundsHeight", tc.height)
+				transformWireAssertNumber(t, wire, "boundsHeight", tc.height)
 			}
 			if wire["boundsType"] != "OBS_BOUNDS_NONE" {
 				t.Fatalf("NONE dimension bounds type=%#v", wire["boundsType"])
@@ -311,17 +314,17 @@ func TestLunaTransformWireGroupUpdatePreservesPositiveNoneDimensionIndividually(
 	}
 }
 
-func TestLunaTransformWireGroupUpdateSeparatesEnabledFromTransform(t *testing.T) {
-	old := lunaTransformWireClonePlacement(lunaLifecyclePlacement())
-	want := lunaTransformWireClonePlacement(old)
+func TestTransformWireGroupUpdateSeparatesEnabledFromTransform(t *testing.T) {
+	old := transformWireClonePlacement(groupFixturePlacement())
+	want := transformWireClonePlacement(old)
 	want.Enabled = types.BoolValue(false)
 	want.Transform.X = types.Float64Value(40)
 
-	capture, response := lunaTransformWireRunGroupUpdate(t, old, want)
+	capture, response := transformWireRunGroupUpdate(t, old, want)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("enabled transform update diagnostics: %v", response.Diagnostics)
 	}
-	mutations := lunaTransformWireDirectMutations(capture)
+	mutations := transformWireDirectMutations(capture)
 	if len(mutations) != 2 || mutations[0].typ != "SetSceneItemEnabled" || mutations[1].typ != "SetSceneItemTransform" {
 		t.Fatalf("direct mutation order=%#v, want enabled then transform", mutations)
 	}
@@ -333,9 +336,9 @@ func TestLunaTransformWireGroupUpdateSeparatesEnabledFromTransform(t *testing.T)
 		t.Fatalf("enabled mode omitted transform setter: %#v", mutations[1].data)
 	}
 	included := []string{"positionX", "positionY", "scaleX", "scaleY", "rotation", "alignment", "boundsType", "boundsAlignment", "cropToBounds", "cropLeft", "cropTop", "cropRight", "cropBottom"}
-	lunaTransformWireAssertKeys(t, transform, included, []string{"boundsWidth", "boundsHeight", "sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
-	wire := lunaTransformWireDecodeObject(t, transform)
-	lunaTransformWireAssertNumericTypes(t, wire, map[string]float64{
+	transformWireAssertKeys(t, transform, included, []string{"boundsWidth", "boundsHeight", "sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
+	wire := transformWireDecodeObject(t, transform)
+	transformWireAssertNumericTypes(t, wire, map[string]float64{
 		"positionX": 40, "positionY": 0, "scaleX": 1, "scaleY": 1, "rotation": 0,
 		"alignment": 5, "boundsAlignment": 0, "cropLeft": 0, "cropTop": 0, "cropRight": 0, "cropBottom": 0,
 	})
@@ -344,28 +347,28 @@ func TestLunaTransformWireGroupUpdateSeparatesEnabledFromTransform(t *testing.T)
 	}
 }
 
-func TestLunaTransformWireGroupUpdateIncludesPositiveBoundedDimensions(t *testing.T) {
-	old := lunaTransformWireClonePlacement(lunaLifecyclePlacement())
-	want := lunaTransformWireClonePlacement(old)
+func TestTransformWireGroupUpdateIncludesPositiveBoundedDimensions(t *testing.T) {
+	old := transformWireClonePlacement(groupFixturePlacement())
+	want := transformWireClonePlacement(old)
 	want.Transform.X = types.Float64Value(40)
 	want.Transform.Y = types.Float64Value(12)
 	want.Transform.BoundsType = types.StringValue("OBS_BOUNDS_STRETCH")
 	want.Transform.BoundsWidth = types.Float64Value(640)
 	want.Transform.BoundsHeight = types.Float64Value(360)
 
-	capture, response := lunaTransformWireRunGroupUpdate(t, old, want)
+	capture, response := transformWireRunGroupUpdate(t, old, want)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("bounded transform update diagnostics: %v", response.Diagnostics)
 	}
-	mutations := lunaTransformWireDirectMutations(capture)
+	mutations := transformWireDirectMutations(capture)
 	if len(mutations) != 1 || mutations[0].typ != "SetSceneItemTransform" {
 		t.Fatalf("direct mutations=%#v, want one SetSceneItemTransform", mutations)
 	}
 	transform := mapValue(mutations[0].data["sceneItemTransform"])
 	included := []string{"positionX", "positionY", "scaleX", "scaleY", "rotation", "alignment", "boundsType", "boundsAlignment", "boundsWidth", "boundsHeight", "cropToBounds", "cropLeft", "cropTop", "cropRight", "cropBottom"}
-	lunaTransformWireAssertKeys(t, transform, included, []string{"sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
-	wire := lunaTransformWireDecodeObject(t, transform)
-	lunaTransformWireAssertNumericTypes(t, wire, map[string]float64{
+	transformWireAssertKeys(t, transform, included, []string{"sceneItemEnabled", "sceneItemLocked", "sceneItemIndex"})
+	wire := transformWireDecodeObject(t, transform)
+	transformWireAssertNumericTypes(t, wire, map[string]float64{
 		"positionX": 40, "positionY": 12, "scaleX": 1, "scaleY": 1, "rotation": 0,
 		"alignment": 5, "boundsAlignment": 0, "boundsWidth": 640, "boundsHeight": 360,
 		"cropLeft": 0, "cropTop": 0, "cropRight": 0, "cropBottom": 0,
@@ -375,19 +378,19 @@ func TestLunaTransformWireGroupUpdateIncludesPositiveBoundedDimensions(t *testin
 	}
 }
 
-func TestLunaTransformWireGroupUpdateRejectsZeroBoundedDimensionBeforeSetter(t *testing.T) {
-	old := lunaTransformWireClonePlacement(lunaLifecyclePlacement())
-	want := lunaTransformWireClonePlacement(old)
+func TestTransformWireGroupUpdateRejectsZeroBoundedDimensionBeforeSetter(t *testing.T) {
+	old := transformWireClonePlacement(groupFixturePlacement())
+	want := transformWireClonePlacement(old)
 	want.Transform.X = types.Float64Value(40)
 	want.Transform.BoundsType = types.StringValue("OBS_BOUNDS_STRETCH")
 	want.Transform.BoundsWidth = types.Float64Value(0)
 	want.Transform.BoundsHeight = types.Float64Value(360)
 
-	capture, response := lunaTransformWireRunGroupUpdate(t, old, want)
+	capture, response := transformWireRunGroupUpdate(t, old, want)
 	if !response.Diagnostics.HasError() || !strings.Contains(fmt.Sprint(response.Diagnostics), "placement bounds dimensions are invalid") {
 		t.Fatalf("diagnostics=%v, want bounded zero rejection", response.Diagnostics)
 	}
-	if mutations := lunaTransformWireDirectMutations(capture); len(mutations) != 0 {
+	if mutations := transformWireDirectMutations(capture); len(mutations) != 0 {
 		t.Fatalf("invalid bounded transform sent direct mutations: %#v", mutations)
 	}
 	if capture.groupRead != 1 {
@@ -395,7 +398,7 @@ func TestLunaTransformWireGroupUpdateRejectsZeroBoundedDimensionBeforeSetter(t *
 	}
 }
 
-func lunaTransformWireRepoRoot(t *testing.T) string {
+func transformWireRepoRoot(t *testing.T) string {
 	t.Helper()
 	_, sourceFile, _, ok := runtime.Caller(0)
 	if !ok {
@@ -404,7 +407,7 @@ func lunaTransformWireRepoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(sourceFile), ".."))
 }
 
-func lunaTransformWireFileSHA256(t *testing.T, path string) string {
+func transformWireFileSHA256(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -414,7 +417,7 @@ func lunaTransformWireFileSHA256(t *testing.T, path string) string {
 	return hex.EncodeToString(digest[:])
 }
 
-func lunaTransformWireVectorField(fields []any, name string) map[string]any {
+func transformWireVectorField(fields []any, name string) map[string]any {
 	for _, raw := range fields {
 		field := mapValue(raw)
 		if stringValue(field["name"]) == name {
@@ -424,7 +427,7 @@ func lunaTransformWireVectorField(fields []any, name string) map[string]any {
 	return nil
 }
 
-func lunaTransformWireVectorNamed(vectors []any, name string) map[string]any {
+func transformWireVectorNamed(vectors []any, name string) map[string]any {
 	for _, raw := range vectors {
 		vector := mapValue(raw)
 		if stringValue(vector["name"]) == name {
@@ -434,7 +437,7 @@ func lunaTransformWireVectorNamed(vectors []any, name string) map[string]any {
 	return nil
 }
 
-func lunaTransformWireContainsString(values []any, want string) bool {
+func transformWireContainsString(values []any, want string) bool {
 	for _, raw := range values {
 		if stringValue(raw) == want {
 			return true
@@ -443,7 +446,7 @@ func lunaTransformWireContainsString(values []any, want string) bool {
 	return false
 }
 
-func lunaTransformWireNumbers(value any) ([]float64, bool) {
+func transformWireNumbers(value any) ([]float64, bool) {
 	values, ok := value.([]any)
 	if !ok {
 		return nil, false
@@ -459,9 +462,9 @@ func lunaTransformWireNumbers(value any) ([]float64, bool) {
 	return out, true
 }
 
-func lunaTransformWireAssertNumberList(t *testing.T, got any, want []float64, label string) {
+func transformWireAssertNumberList(t *testing.T, got any, want []float64, label string) {
 	t.Helper()
-	actual, ok := lunaTransformWireNumbers(got)
+	actual, ok := transformWireNumbers(got)
 	if !ok || len(actual) != len(want) {
 		t.Errorf("%s=%#v, want numeric list %#v", label, got, want)
 		return
@@ -473,8 +476,8 @@ func lunaTransformWireAssertNumberList(t *testing.T, got any, want []float64, la
 	}
 }
 
-func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
-	root := lunaTransformWireRepoRoot(t)
+func TestTransformWireVectorsPinProtocolSchema(t *testing.T) {
+	root := transformWireRepoRoot(t)
 	vectorPath := filepath.Join(root, "tools", "transform-protocol-vectors", "set-scene-item-transform.vectors.json")
 	data, err := os.ReadFile(vectorPath)
 	if err != nil {
@@ -498,27 +501,27 @@ func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
 	if _, err := os.Stat(headerPath); err != nil {
 		t.Skipf("pinned obs-websocket header not fetched (%s); run `make -C native-bridge fetch` to check the pin", headerPath)
 	}
-	if got, want := lunaTransformWireFileSHA256(t, headerPath), stringValue(source["local_pinned_header_sha256"]); got != want {
+	if got, want := transformWireFileSHA256(t, headerPath), stringValue(source["local_pinned_header_sha256"]); got != want {
 		t.Fatalf("pinned header sha256=%s, want fixture=%s", got, want)
 	}
 	contractPath := filepath.Join(root, filepath.FromSlash(stringValue(source["local_contract"])))
-	if got, want := lunaTransformWireFileSHA256(t, contractPath), stringValue(source["local_contract_sha256"]); got != want {
+	if got, want := transformWireFileSHA256(t, contractPath), stringValue(source["local_contract_sha256"]); got != want {
 		t.Fatalf("contract sha256=%s, want fixture=%s", got, want)
 	}
 
 	fields := sliceValue(fixture["transform_fields"])
 	for _, name := range []string{"positionX", "positionY", "rotation", "scaleX", "scaleY", "alignment", "boundsType", "boundsAlignment", "boundsWidth", "boundsHeight", "cropToBounds", "cropLeft", "cropTop", "cropRight", "cropBottom"} {
-		if lunaTransformWireVectorField(fields, name) == nil {
+		if transformWireVectorField(fields, name) == nil {
 			t.Fatalf("transform field %q missing from vector fixture", name)
 		}
 	}
 	for _, name := range []string{"positionX", "positionY", "rotation", "scaleX", "scaleY", "alignment", "boundsAlignment", "boundsWidth", "boundsHeight", "cropLeft", "cropTop", "cropRight", "cropBottom"} {
-		field := lunaTransformWireVectorField(fields, name)
+		field := transformWireVectorField(fields, name)
 		if stringValue(field["json_type"]) != "number" {
 			t.Errorf("field %s json_type=%q, want number", name, stringValue(field["json_type"]))
 		}
 	}
-	width := lunaTransformWireVectorField(fields, "boundsWidth")
+	width := transformWireVectorField(fields, "boundsWidth")
 	if min, _ := numberValue(width["minimum"]); min != 1 {
 		t.Errorf("boundsWidth minimum=%#v, want 1", width["minimum"])
 	}
@@ -539,7 +542,7 @@ func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
 		"cropBottom":      {0, 100000},
 	}
 	for name, wantRange := range wantRanges {
-		field := lunaTransformWireVectorField(fields, name)
+		field := transformWireVectorField(fields, name)
 		if min, ok := numberValue(field["minimum"]); !ok || min != wantRange[0] {
 			t.Errorf("%s minimum=%#v, want %v", name, field["minimum"], wantRange[0])
 		}
@@ -548,28 +551,28 @@ func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
 		}
 	}
 	outerFields := sliceValue(fixture["outer_fields"])
-	itemIDField := lunaTransformWireVectorField(outerFields, "sceneItemId")
+	itemIDField := transformWireVectorField(outerFields, "sceneItemId")
 	if stringValue(itemIDField["json_type"]) != "number" || !boolValue(itemIDField["required"]) {
 		t.Errorf("sceneItemId metadata=%#v, want required JSON number", itemIDField)
 	}
 	if minimum, ok := numberValue(itemIDField["minimum"]); !ok || minimum != 0 {
 		t.Errorf("sceneItemId minimum=%#v, want 0", itemIDField["minimum"])
 	}
-	transformField := lunaTransformWireVectorField(outerFields, "sceneItemTransform")
+	transformField := transformWireVectorField(outerFields, "sceneItemTransform")
 	if stringValue(transformField["json_type"]) != "object" || !boolValue(transformField["required"]) {
 		t.Errorf("sceneItemTransform metadata=%#v, want required JSON object", transformField)
 	}
 
 	vectors := sliceValue(fixture["vectors"])
 	for _, name := range []string{"none_raw_zero_omit", "none_positive_width_zero_height", "none_zero_width_positive_height", "none_enabled_false", "bounded_positive", "bounded_minimum", "bounded_zero_invalid", "omitted_preserves_native"} {
-		if lunaTransformWireVectorNamed(vectors, name) == nil {
+		if transformWireVectorNamed(vectors, name) == nil {
 			t.Fatalf("semantic vector %q missing", name)
 		}
 	}
-	none := lunaTransformWireVectorNamed(vectors, "none_raw_zero_omit")
+	none := transformWireVectorNamed(vectors, "none_raw_zero_omit")
 	expected := mapValue(none["expected"])
 	omits := sliceValue(expected["transform_omits"])
-	if !lunaTransformWireContainsString(omits, "boundsWidth") || !lunaTransformWireContainsString(omits, "boundsHeight") {
+	if !transformWireContainsString(omits, "boundsWidth") || !transformWireContainsString(omits, "boundsHeight") {
 		t.Fatalf("NONE vector omissions=%#v, want both raw bounds dimensions", omits)
 	}
 	nativeDefaults := sliceValue(fixture["native_defaults"])
@@ -590,7 +593,7 @@ func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
 	if height, ok := numberValue(readback["boundsHeight"]); !ok || height != 0 {
 		t.Errorf("NONE native default height=%#v, want 0", readback["boundsHeight"])
 	}
-	bounded := lunaTransformWireVectorNamed(vectors, "bounded_positive")
+	bounded := transformWireVectorNamed(vectors, "bounded_positive")
 	boundedExpected := mapValue(bounded["expected"])
 	boundedWire := mapValue(boundedExpected["bounds_wire"])
 	if width, ok := numberValue(boundedWire["boundsWidth"]); !ok || width != 640 {
@@ -627,8 +630,8 @@ func TestLunaTransformWireVectorsPinProtocolSchema(t *testing.T) {
 			continue
 		}
 		seenBoundaries[name] = true
-		lunaTransformWireAssertNumberList(t, boundary["accepted"], want.accepted, name+" accepted")
-		lunaTransformWireAssertNumberList(t, boundary["rejected"], want.rejected, name+" rejected")
+		transformWireAssertNumberList(t, boundary["accepted"], want.accepted, name+" accepted")
+		transformWireAssertNumberList(t, boundary["rejected"], want.rejected, name+" rejected")
 	}
 	for name := range wantBoundaries {
 		if !seenBoundaries[name] {

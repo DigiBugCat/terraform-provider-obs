@@ -20,12 +20,12 @@ type groupItemFake struct {
 	sceneName, groupName, sourceName               string
 	items                                          map[int64]itemObservation
 	next                                           int64
-	calls                                          []lunaLifecycleCall
+	calls                                          []groupFixtureCall
 	fail, bridgeOutcome                            string
 }
 
 func newGroupItemFake() *groupItemFake {
-	return &groupItemFake{groupExists: true, sceneName: lunaLifecycleSceneName, groupName: lunaLifecycleGroupName, sourceName: lunaLifecycleInputName, items: map[int64]itemObservation{}, next: 20}
+	return &groupItemFake{groupExists: true, sceneName: groupFixtureSceneName, groupName: groupFixtureGroupName, sourceName: groupFixtureInputName, items: map[int64]itemObservation{}, next: 20}
 }
 func groupItemTransform() transformModel {
 	return transformFromNative(map[string]any{"positionX": 10., "positionY": 20., "scaleX": 1., "scaleY": 1., "rotation": 0., "alignment": 5., "boundsType": "OBS_BOUNDS_NONE"})
@@ -34,13 +34,13 @@ func (f *groupItemFake) roster(item itemObservation) map[string]any {
 	return map[string]any{"sourceName": item.SourceName, "sourceUuid": item.SourceUUID, "sceneItemId": item.ItemID, "sceneItemIndex": item.Index, "sceneItemEnabled": item.Enabled, "sceneItemTransform": item.Transform.native()}
 }
 func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) (map[string]any, error) {
-	f.calls = append(f.calls, lunaLifecycleCall{typ: typ, data: data})
+	f.calls = append(f.calls, groupFixtureCall{typ: typ, data: data})
 	if f.fail == typ {
 		return nil, fmt.Errorf("injected %s", typ)
 	}
 	switch typ {
 	case "GetSceneCollectionList":
-		return map[string]any{"currentSceneCollectionName": lunaLifecycleCollection}, nil
+		return map[string]any{"currentSceneCollectionName": groupFixtureCollection}, nil
 	case "GetVersion":
 		return map[string]any{"obsVersion": "32.2.2", "obsWebSocketVersion": "5.7.4", "rpcVersion": float64(1), "availableRequests": []any{"CallVendorRequest", "CreateSceneItem", "RemoveSceneItem", "SetSceneItemEnabled", "SetSceneItemTransform", "SetSceneItemIndex", "GetStreamStatus"}}, nil
 	case "GetVideoSettings":
@@ -48,11 +48,11 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 	case "GetStreamStatus":
 		return map[string]any{"outputActive": false}, nil
 	case "GetSceneList":
-		return map[string]any{"scenes": []any{map[string]any{"sceneName": f.sceneName, "sceneUuid": lunaLifecycleSceneUUID}}}, nil
+		return map[string]any{"scenes": []any{map[string]any{"sceneName": f.sceneName, "sceneUuid": groupFixtureSceneUUID}}}, nil
 	case "GetInputSettings":
 		return map[string]any{"inputSettings": map[string]any{}, "inputKind": "image_source"}, nil
 	case "GetInputList":
-		return map[string]any{"inputs": []any{map[string]any{"inputName": f.sourceName, "inputUuid": lunaLifecycleInputUUID, "inputKind": "image_source"}}}, nil
+		return map[string]any{"inputs": []any{map[string]any{"inputName": f.sourceName, "inputUuid": groupFixtureInputUUID, "inputKind": "image_source"}}}, nil
 	case "GetGroupList":
 		groups := []any{}
 		if f.groupExists {
@@ -65,7 +65,7 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 		}
 		items := []any{}
 		if f.groupExists {
-			group := itemObservation{SourceName: f.groupName, SourceUUID: lunaLifecycleGroupUUID, ItemID: 7, Transform: groupItemTransform()}
+			group := itemObservation{SourceName: f.groupName, SourceUUID: groupFixtureGroupUUID, ItemID: 7, Transform: groupItemTransform()}
 			items = append(items, f.roster(group))
 			if f.duplicateParent {
 				group.ItemID = 8
@@ -89,15 +89,15 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 			}
 		}
 		if f.nested {
-			items = append(items, f.roster(itemObservation{SourceName: f.groupName, SourceUUID: lunaLifecycleGroupUUID, ItemID: 99, Transform: groupItemTransform()}))
+			items = append(items, f.roster(itemObservation{SourceName: f.groupName, SourceUUID: groupFixtureGroupUUID, ItemID: 99, Transform: groupItemTransform()}))
 		}
 		return map[string]any{"sceneItems": items}, nil
 	case "CreateSceneItem":
-		if data["sceneUuid"] != lunaLifecycleSceneUUID {
+		if data["sceneUuid"] != groupFixtureSceneUUID {
 			return nil, fmt.Errorf("CreateSceneItem does not accept groups")
 		}
 		f.next++
-		f.items[f.next] = itemObservation{SceneName: f.sceneName, SourceName: f.sourceName, SourceUUID: lunaLifecycleInputUUID, ItemID: f.next, Enabled: boolValue(data["sceneItemEnabled"]), Transform: groupItemTransform()}
+		f.items[f.next] = itemObservation{SceneName: f.sceneName, SourceName: f.sourceName, SourceUUID: groupFixtureInputUUID, ItemID: f.next, Enabled: boolValue(data["sceneItemEnabled"]), Transform: groupItemTransform()}
 		return map[string]any{"sceneItemId": f.next}, nil
 	case "SetSceneItemTransform", "SetSceneItemEnabled", "SetSceneItemIndex":
 		id := int64Value(data["sceneItemId"])
@@ -116,7 +116,7 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 		f.items[id] = it
 		return map[string]any{}, nil
 	case "RemoveSceneItem":
-		if data["sceneUuid"] != lunaLifecycleSceneUUID {
+		if data["sceneUuid"] != groupFixtureSceneUUID {
 			return nil, fmt.Errorf("RemoveSceneItem does not accept groups")
 		}
 		delete(f.items, int64Value(data["sceneItemId"]))
@@ -129,7 +129,7 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 		mutation := kind != "GetCapabilities" && kind != "GetGroup"
 		switch kind {
 		case "GetCapabilities":
-			result = lunaLifecycleCapabilities([]string{"AddSourceToGroup", "GetGroup", "RemoveGroupChildPlacement"})
+			result = groupFixtureCapabilities([]string{"AddSourceToGroup", "GetGroup", "RemoveGroupChildPlacement"})
 			if f.relative {
 				result["absoluteCoordinates"] = false
 				g := mapValue(result["absoluteRuntimeGuard"])
@@ -140,7 +140,7 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 				mapValue(result["supports"])["absoluteGroupGraphMutations"] = false
 			}
 		case "AddSourceToGroup":
-			if mapValue(rd["scene"])["sourceUuid"] != lunaLifecycleSceneUUID || mapValue(rd["group"])["sourceUuid"] != lunaLifecycleGroupUUID {
+			if mapValue(rd["scene"])["sourceUuid"] != groupFixtureSceneUUID || mapValue(rd["group"])["sourceUuid"] != groupFixtureGroupUUID {
 				return nil, fmt.Errorf("wrong bridge parent identities")
 			}
 			placement, err := bridgePlacementFromNative(rd["placement"])
@@ -149,9 +149,9 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 			}
 			f.next++
 			native, _ := placement.request()
-			it := itemObservation{SceneName: f.groupName, SourceName: f.sourceName, SourceUUID: lunaLifecycleInputUUID, ItemID: f.next, Enabled: placement.Enabled.ValueBool(), Index: placement.Index.ValueInt64(), Transform: transformFromNative(mapValue(native["sceneItemTransform"]))}
+			it := itemObservation{SceneName: f.groupName, SourceName: f.sourceName, SourceUUID: groupFixtureInputUUID, ItemID: f.next, Enabled: placement.Enabled.ValueBool(), Index: placement.Index.ValueInt64(), Transform: transformFromNative(mapValue(native["sceneItemTransform"]))}
 			f.items[it.ItemID] = it
-			result = lunaLifecycleChildResult(it.ItemID, it.SourceUUID, it.SourceName, placement)
+			result = groupFixtureChildResult(it.ItemID, it.SourceUUID, it.SourceName, placement)
 			if f.bridgeOutcome != "" {
 				outcome = f.bridgeOutcome
 			}
@@ -167,40 +167,40 @@ func (f *groupItemFake) Req(_ context.Context, typ string, data map[string]any) 
 				m.Enabled = types.BoolValue(it.Enabled)
 				raw, _ := sceneItemBridgePlacement(m)
 				placement, _ := bridgePlacementFromNative(raw)
-				children = append(children, lunaLifecycleChildResult(it.ItemID, it.SourceUUID, it.SourceName, placement))
+				children = append(children, groupFixtureChildResult(it.ItemID, it.SourceUUID, it.SourceName, placement))
 			}
-			result = lunaLifecycleGroupResult(7, lunaLifecycleGroupUUID, f.groupName, lunaLifecyclePlacement(), children)
-			result["scene"] = map[string]any{"sourceName": f.sceneName, "sourceUuid": lunaLifecycleSceneUUID}
+			result = groupFixtureGroupResult(7, groupFixtureGroupUUID, f.groupName, groupFixturePlacement(), children)
+			result["scene"] = map[string]any{"sourceName": f.sceneName, "sourceUuid": groupFixtureSceneUUID}
 		case "RemoveGroupChildPlacement":
 			delete(f.items, int64Value(mapValue(rd["child"])["sceneItemId"]))
 			result["sourceStillExists"] = true
 		default:
 			return nil, fmt.Errorf("unexpected bridge request %s", kind)
 		}
-		return lunaLifecycleBridgeEnvelope(kind, stringValue(rd["clientOperationId"]), lunaLifecycleBridgeReply{outcome: outcome, mutationAttempted: mutation, postconditionVerified: outcome != "uncertain", result: result}), nil
+		return groupFixtureBridgeEnvelope(kind, stringValue(rd["clientOperationId"]), groupFixtureBridgeReply{outcome: outcome, mutationAttempted: mutation, postconditionVerified: outcome != "uncertain", result: result}), nil
 	}
 	return nil, fmt.Errorf("unexpected request %s", typ)
 }
-func groupItemModel(f *groupItemFake, kind string) groupAwareSceneItemModel {
-	name, uuid := f.sceneName, lunaLifecycleSceneUUID
+func groupItemModel(f *groupItemFake, kind string) sceneItemModel {
+	name, uuid := f.sceneName, groupFixtureSceneUUID
 	if kind == "group" {
-		name, uuid = f.groupName, lunaLifecycleGroupUUID
+		name, uuid = f.groupName, groupFixtureGroupUUID
 	}
 	tr := groupItemTransform()
-	return groupAwareSceneItemModel{ID: types.StringUnknown(), Collection: types.StringValue(lunaLifecycleCollection), SceneName: types.StringValue(name), SceneUUID: types.StringValue(uuid), SourceName: types.StringValue(f.sourceName), SourceUUID: types.StringValue(lunaLifecycleInputUUID), ItemID: types.Int64Unknown(), Enabled: types.BoolValue(true), Index: types.Int64Value(1), Transform: &tr, ParentKind: types.StringValue(kind), AllowDuplicate: types.BoolValue(false)}
+	return sceneItemModel{ID: types.StringUnknown(), Collection: types.StringValue(groupFixtureCollection), SceneName: types.StringValue(name), SceneUUID: types.StringValue(uuid), SourceName: types.StringValue(f.sourceName), SourceUUID: types.StringValue(groupFixtureInputUUID), ItemID: types.Int64Unknown(), Enabled: types.BoolValue(true), Index: types.Int64Value(1), Transform: &tr, ParentKind: types.StringValue(kind), AllowDuplicate: types.BoolValue(false)}
 }
 func groupItemSchema() schema.Schema {
 	var resp resource.SchemaResponse
 	(&sceneItemResource{}).Schema(context.Background(), resource.SchemaRequest{}, &resp)
 	return resp.Schema
 }
-func groupItemState(t *testing.T, m groupAwareSceneItemModel) tfsdk.State {
-	return lunaLifecycleSchemaAndState(t, context.Background(), groupItemSchema(), m)
+func groupItemState(t *testing.T, m sceneItemModel) tfsdk.State {
+	return groupFixtureSchemaAndState(t, context.Background(), groupItemSchema(), m)
 }
-func groupItemPlan(t *testing.T, m groupAwareSceneItemModel) tfsdk.Plan {
-	return lunaLifecycleSchemaAndPlan(t, context.Background(), groupItemSchema(), m)
+func groupItemPlan(t *testing.T, m sceneItemModel) tfsdk.Plan {
+	return groupFixtureSchemaAndPlan(t, context.Background(), groupItemSchema(), m)
 }
-func groupItemCreate(t *testing.T, f *groupItemFake, m groupAwareSceneItemModel) resource.CreateResponse {
+func groupItemCreate(t *testing.T, f *groupItemFake, m sceneItemModel) resource.CreateResponse {
 	t.Helper()
 	r := &sceneItemResource{client: &client{testRequester: f}}
 	resp := resource.CreateResponse{State: groupItemState(t, m)}
@@ -214,13 +214,13 @@ func TestGroupItemCRUDAndSharedSourceOwnership(t *testing.T) {
 			f := newGroupItemFake()
 			m := groupItemModel(f, kind)
 			m.AllowDuplicate = types.BoolValue(true)
-			f.items[11] = itemObservation{SceneName: m.SceneName.ValueString(), SourceName: f.sourceName, SourceUUID: lunaLifecycleInputUUID, ItemID: 11, Transform: groupItemTransform()}
+			f.items[11] = itemObservation{SceneName: m.SceneName.ValueString(), SourceName: f.sourceName, SourceUUID: groupFixtureInputUUID, ItemID: 11, Transform: groupItemTransform()}
 			cr := groupItemCreate(t, f, m)
 			if cr.Diagnostics.HasError() {
 				t.Fatal(cr.Diagnostics)
 			}
-			var made groupAwareSceneItemModel
-			lunaLifecycleRequireState(t, ctx, cr.State, &made)
+			var made sceneItemModel
+			groupFixtureRequireState(t, ctx, cr.State, &made)
 			if made.ItemID.ValueInt64() != 21 || len(f.items) != 2 {
 				t.Fatalf("duplicate placement ownership lost: %+v", made)
 			}
@@ -244,7 +244,7 @@ func TestGroupItemCRUDAndSharedSourceOwnership(t *testing.T) {
 			if dr.Diagnostics.HasError() {
 				t.Fatal(dr.Diagnostics)
 			}
-			if len(f.items) != 1 || f.items[11].SourceUUID != lunaLifecycleInputUUID {
+			if len(f.items) != 1 || f.items[11].SourceUUID != groupFixtureInputUUID {
 				t.Fatal("destroyed shared source/sibling")
 			}
 			for _, c := range f.calls {
@@ -260,7 +260,7 @@ func TestGroupItemDuplicatesRequireOptIn(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			f := newGroupItemFake()
 			m := groupItemModel(f, kind)
-			f.items[11] = itemObservation{SceneName: m.SceneName.ValueString(), SourceName: f.sourceName, SourceUUID: lunaLifecycleInputUUID, ItemID: 11, Transform: groupItemTransform()}
+			f.items[11] = itemObservation{SceneName: m.SceneName.ValueString(), SourceName: f.sourceName, SourceUUID: groupFixtureInputUUID, ItemID: 11, Transform: groupItemTransform()}
 			cr := groupItemCreate(t, f, m)
 			if !cr.Diagnostics.HasError() || !strings.Contains(cr.Diagnostics.Errors()[0].Detail(), "already has a placement") {
 				t.Fatal(cr.Diagnostics)
@@ -342,8 +342,8 @@ func TestGroupItemPartialCreateRetainsOnlyAuthoritativeIdentity(t *testing.T) {
 			if !cr.Diagnostics.HasError() {
 				t.Fatal("expected failure")
 			}
-			var got groupAwareSceneItemModel
-			lunaLifecycleRequireState(t, context.Background(), cr.State, &got)
+			var got sceneItemModel
+			groupFixtureRequireState(t, context.Background(), cr.State, &got)
 			if mode == "uncertain" {
 				if !got.ItemID.IsUnknown() {
 					t.Fatal("adopted uncertain mutation identity")
@@ -364,8 +364,8 @@ func TestGroupItemImportAndLegacyDefaults(t *testing.T) {
 			if resp.Diagnostics.HasError() {
 				t.Fatal(resp.Diagnostics)
 			}
-			var m groupAwareSceneItemModel
-			lunaLifecycleRequireState(t, context.Background(), resp.State, &m)
+			var m sceneItemModel
+			groupFixtureRequireState(t, context.Background(), resp.State, &m)
 			if m.ParentKind.ValueString() != kind || m.ItemID.ValueInt64() != 42 || m.AllowDuplicate.ValueBool() {
 				t.Fatal("incorrect import identity")
 			}

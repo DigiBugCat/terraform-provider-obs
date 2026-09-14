@@ -71,8 +71,8 @@ func (p *Provider) Configure(ctx context.Context, req provider.ConfigureRequest,
 		port = 4455
 	}
 	cfg := ws.Config{Host: host, Port: port, Password: data.Password.ValueString()}
-	if cfg.Host == "" || cfg.Port <= 0 {
-		resp.Diagnostics.AddError("Invalid OBS WebSocket configuration", fmt.Sprintf("host=%q port=%d", cfg.Host, cfg.Port))
+	if cfg.Port < 1 || cfg.Port > 65535 {
+		resp.Diagnostics.AddError("Invalid OBS WebSocket configuration", fmt.Sprintf("port %d is outside 1-65535", cfg.Port))
 		return
 	}
 	// Installation-only plans do not require a running/configured WebSocket.

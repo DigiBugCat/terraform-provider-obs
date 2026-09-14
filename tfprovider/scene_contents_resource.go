@@ -282,11 +282,11 @@ func reconcileSceneContents(ctx context.Context, cl requester, m *sceneContentsM
 	if err = refresh(); err != nil {
 		return err
 	}
-	for _, candidate := range append([]itemObservation(nil), items...) {
+	for _, candidate := range items {
 		if wanted[candidate.ItemID] {
 			continue
 		}
-		model := groupAwareSceneItemModel{Collection: m.Collection, ParentKind: m.ParentKind, SourceUUID: types.StringValue(candidate.SourceUUID)}
+		model := sceneItemModel{Collection: m.Collection, ParentKind: m.ParentKind, SourceUUID: types.StringValue(candidate.SourceUUID)}
 		if err = deleteContainerSceneItem(ctx, cl, container, model, candidate); err != nil {
 			return err
 		}

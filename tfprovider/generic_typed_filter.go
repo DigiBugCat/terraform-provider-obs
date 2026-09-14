@@ -20,6 +20,9 @@ type FilterSpec struct {
 	EncodeSettings   func(map[string]any) (map[string]any, error)
 	DecodeSettings   func(map[string]any) (map[string]any, error)
 	ValidateNative   func(context.Context, func(context.Context, string, map[string]any) (map[string]any, error), string, string, map[string]any) error
+	// ImportID, when set, parses a resource-specific import ID before the generic JSON
+	// form is tried, so a typed resource can keep an older import ID shape.
+	ImportID func(id string) (collection, parentUUID, parentName, name string, ok bool)
 }
 
 func (r *genericFilterResource) validateTypedNative(ctx context.Context, cl requester, m genericFilterModel) error {

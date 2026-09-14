@@ -73,14 +73,14 @@ func TestGenericFilterPartialCreateRetainsIdentity(t *testing.T) {
 			r.Schema(ctx, resource.SchemaRequest{}, &sc)
 			m := genericTestModel()
 			m.ID = types.StringUnknown()
-			plan := lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m)
-			resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)}
+			plan := groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m)
+			resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)}
 			r.Create(ctx, resource.CreateRequest{Plan: plan}, &resp)
 			if resp.Diagnostics.HasError() != (fail != "") {
 				t.Fatal(resp.Diagnostics)
 			}
 			var got genericFilterModel
-			lunaLifecycleRequireState(t, ctx, resp.State, &got)
+			groupFixtureRequireState(t, ctx, resp.State, &got)
 			if got.ID.ValueString() != "lab|p|fx" {
 				t.Fatal("identity lost", got.ID)
 			}
@@ -94,9 +94,9 @@ func TestGenericFilterOverlayAndSemanticRead(t *testing.T) {
 	var sc resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
 	m := genericTestModel()
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)
 	resp := resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m), State: state}, &resp)
+	r.Update(ctx, resource.UpdateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m), State: state}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatal(resp.Diagnostics)
 	}
@@ -109,7 +109,7 @@ func TestGenericFilterOverlayAndSemanticRead(t *testing.T) {
 		t.Fatal(read.Diagnostics)
 	}
 	var got genericFilterModel
-	lunaLifecycleRequireState(t, ctx, read.State, &got)
+	groupFixtureRequireState(t, ctx, read.State, &got)
 	if got.SettingsJSON.ValueString() != m.SettingsJSON.ValueString() {
 		t.Fatal("semantic equal JSON rewritten")
 	}
@@ -142,8 +142,8 @@ func TestGenericFilterKindAndWriteFailureRefuse(t *testing.T) {
 			m := genericTestModel()
 			if scenario == "unavailable" {
 				m.Kind = types.StringValue("missing_plugin")
-				resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)}
-				r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m)}, &resp)
+				resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)}
+				r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m)}, &resp)
 				if !resp.Diagnostics.HasError() || f.filter != nil {
 					t.Fatal("unavailable kind mutated")
 				}
@@ -152,10 +152,10 @@ func TestGenericFilterKindAndWriteFailureRefuse(t *testing.T) {
 			if scenario == "authoritative-create" {
 				t.Setenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE", "CreateSourceFilter")
 				m.ID = types.StringUnknown()
-				resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)}
-				r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m)}, &resp)
+				resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)}
+				r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m)}, &resp)
 				var got genericFilterModel
-				lunaLifecycleRequireState(t, ctx, resp.State, &got)
+				groupFixtureRequireState(t, ctx, resp.State, &got)
 				if !resp.Diagnostics.HasError() || got.ID.IsUnknown() {
 					t.Fatal("authoritative identity lost")
 				}
@@ -167,9 +167,9 @@ func TestGenericFilterKindAndWriteFailureRefuse(t *testing.T) {
 			} else {
 				f.fail = "SetSourceFilterSettings"
 			}
-			state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)
+			state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)
 			resp := resource.UpdateResponse{State: state}
-			r.Update(ctx, resource.UpdateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m), State: state}, &resp)
+			r.Update(ctx, resource.UpdateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m), State: state}, &resp)
 			if !resp.Diagnostics.HasError() {
 				t.Fatal("failure accepted")
 			}

@@ -82,12 +82,8 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 		envelope, callErr := bridgeMutation(ctx, cl, m.Collection.ValueString(), "CreateGroup", opID, map[string]any{
 			"scene": bridgeIdentity(scene.UUID, scene.Name, 0), "groupName": m.Name.ValueString(), "placement": placement,
 		})
-		var observed bridgeGroupObservation
-		observedErr := fmt.Errorf("bridge result is not trusted because the envelope was invalid")
-		if callErr == nil || isAuthoritativeNativeInterruption(callErr) {
-			observed, observedErr = bridgeGroupFromResult(envelope.Result)
-		}
-		if observedErr == nil {
+		observed, trusted, err := bridgeOutcome("CreateGroup", envelope, callErr, bridgeGroupFromResult)
+		if trusted {
 			m.GroupUUID = types.StringValue(observed.UUID)
 			m.ItemID = types.Int64Value(observed.ItemID)
 			m.ID = types.StringValue(groupID(m.Collection.ValueString(), scene.UUID, observed.UUID, observed.ItemID))
@@ -95,14 +91,8 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 			m.GroupHeight = types.Int64Value(observed.Height)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 		}
-		if callErr != nil {
-			return callErr
-		}
-		if envelope.Outcome != "completed" {
-			return fmt.Errorf("bridge CreateGroup %s (%s): %s; re-observe before retry", envelope.Outcome, envelope.Code, envelope.Message)
-		}
-		if observedErr != nil {
-			return observedErr
+		if err != nil {
+			return err
 		}
 		if observed.SceneUUID != scene.UUID || observed.SceneName != scene.Name || observed.Name != m.Name.ValueString() {
 			return fmt.Errorf("bridge CreateGroup returned mismatched identity")
@@ -111,7 +101,7 @@ func (r *groupResource) Create(ctx context.Context, req resource.CreateRequest, 
 			return fmt.Errorf("bridge CreateGroup placement mismatch: %s", diff)
 		}
 		mm, mm.Placement = m, &clamped
-		settled, err := waitBridgeGroup(ctx, cl, mm, 40, 100*time.Millisecond)
+		settled, err := waitBridgeGroup(ctx, cl, mm, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}
@@ -203,6 +193,16 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 		itemID := state.ItemID.ValueInt64()
 		var observedPlacement *bridgePlacementModel
+		// target is the placement OBS can honour now; state keeps the declared index.
+		target := *plan.Placement
+		clampTarget := func() error {
+			siblings, err := containerItemCount(ctx, cl, scene.Name, false)
+			if err != nil {
+				return err
+			}
+			target.Index = types.Int64Value(clampCreateIndex(plan.Placement.Index.ValueInt64(), siblings-1))
+			return nil
+		}
 		if state.SceneName.IsNull() {
 			if exists, err := groupNameExists(ctx, cl, plan.Name.ValueString()); err != nil || !exists {
 				return fmt.Errorf("missing group source cannot be proven available: %v", err)
@@ -211,7 +211,9 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 				return err
 			}
 			x, callErr := mutation(ctx, cl, plan.Collection.ValueString(), "CreateSceneItem", map[string]any{"sceneUuid": scene.UUID, "sourceUuid": state.GroupUUID.ValueString(), "sceneItemEnabled": plan.Placement.Enabled.ValueBool()})
-			if callErr != nil && !isAuthoritativeNativeInterruption(callErr) {
+			// A receipt-write failure still returns the created item id; record it before
+			// surfacing the error so the placement is never orphaned.
+			if callErr != nil && !isAuthoritativeNativeInterruption(callErr) && int64Value(x["sceneItemId"]) <= 0 {
 				return callErr
 			}
 			itemID = int64Value(x["sceneItemId"])
@@ -229,7 +231,10 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			if callErr != nil {
 				return callErr
 			}
-			if err := setBridgeItem(ctx, cl, plan.Collection.ValueString(), scene.Name, itemID, plan.Placement); err != nil {
+			if err := clampTarget(); err != nil {
+				return err
+			}
+			if err := setBridgeItem(ctx, cl, plan.Collection.ValueString(), scene.Name, itemID, &target); err != nil {
 				return err
 			}
 		} else {
@@ -247,14 +252,19 @@ func (r *groupResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			observedPlacement = &observed.Placement
 		}
 		if observedPlacement != nil {
-			if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), scene.Name, itemID, *observedPlacement, plan.Placement); err != nil {
+			if err := clampTarget(); err != nil {
+				return err
+			}
+			if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), scene.Name, itemID, *observedPlacement, &target); err != nil {
 				return err
 			}
 		}
 		plan.GroupUUID = state.GroupUUID
 		plan.ItemID = types.Int64Value(itemID)
 		plan.ID = types.StringValue(groupID(plan.Collection.ValueString(), scene.UUID, state.GroupUUID.ValueString(), itemID))
-		settled, err := waitBridgeGroup(ctx, cl, plan, 40, 100*time.Millisecond)
+		verify := plan
+		verify.Placement = &target
+		settled, err := waitBridgeGroup(ctx, cl, verify, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}

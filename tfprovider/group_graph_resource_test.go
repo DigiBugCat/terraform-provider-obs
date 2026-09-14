@@ -22,7 +22,7 @@ type groupGraphFakeChild struct {
 
 type groupGraphFakeOBS struct {
 	mu                sync.Mutex
-	calls             []lunaLifecycleCall
+	calls             []groupFixtureCall
 	groupExists       bool
 	groupUUID         string
 	parentItemID      int64
@@ -44,21 +44,21 @@ type groupGraphFakeOBS struct {
 func (f *groupGraphFakeOBS) Req(_ context.Context, typ string, data map[string]any) (map[string]any, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, lunaLifecycleCall{typ: typ, data: data})
+	f.calls = append(f.calls, groupFixtureCall{typ: typ, data: data})
 	allRequests := []string{"CallVendorRequest", "GetSourceScreenshot", "SetSceneItemEnabled", "SetSceneItemLocked", "SetSceneItemTransform", "SetSceneItemIndex", "SetInputSettings", "CreateSceneItem", "RemoveSceneItem", "GetStreamStatus", "GetRecordStatus", "GetVirtualCamStatus", "GetReplayBufferStatus"}
 	switch typ {
 	case "GetSceneCollectionList":
-		return map[string]any{"currentSceneCollectionName": lunaLifecycleCollection}, nil
+		return map[string]any{"currentSceneCollectionName": groupFixtureCollection}, nil
 	case "GetSceneList":
-		return lunaLifecycleSceneList(), nil
+		return groupFixtureSceneList(), nil
 	case "GetGroupList":
 		groups := []any{}
 		if f.groupExists {
-			groups = append(groups, lunaLifecycleGroupName)
+			groups = append(groups, groupFixtureGroupName)
 		}
 		return map[string]any{"groups": groups}, nil
 	case "GetVersion":
-		return lunaLifecycleVersion(allRequests...), nil
+		return groupFixtureVersion(allRequests...), nil
 	case "GetVideoSettings":
 		return map[string]any{"baseWidth": 1920.0, "baseHeight": 1080.0}, nil
 	case "GetStreamStatus", "GetRecordStatus", "GetVirtualCamStatus", "GetReplayBufferStatus":
@@ -83,10 +83,10 @@ func (f *groupGraphFakeOBS) Req(_ context.Context, typ string, data map[string]a
 		}
 		return nil, fmt.Errorf("unknown input %s", uuid)
 	case "GetInputDefaultSettings":
-		return lunaLifecycleDefaultImageSettings(), nil
+		return groupFixtureDefaultImageSettings(), nil
 	case "GetSourceScreenshot":
 		f.screenshotCount++
-		if stringValue(data["sourceUuid"]) != lunaLifecycleSceneUUID {
+		if stringValue(data["sourceUuid"]) != groupFixtureSceneUUID {
 			return nil, fmt.Errorf("screenshot source is not exact parent scene")
 		}
 		if f.failScreenshot || (f.failScreenshotAt > 0 && f.screenshotCount == f.failScreenshotAt) {
@@ -106,7 +106,7 @@ func (f *groupGraphFakeOBS) Req(_ context.Context, typ string, data map[string]a
 		items := []any{}
 		if f.groupExists && f.parentItemID > 0 {
 			p, _ := f.parentPlacement.request()
-			items = append(items, map[string]any{"sourceName": lunaLifecycleGroupName, "sourceUuid": f.groupUUID, "sceneItemId": float64(f.parentItemID), "sceneItemIndex": float64(f.parentPlacement.Index.ValueInt64()), "sceneItemEnabled": f.parentPlacement.Enabled.ValueBool(), "sceneItemTransform": p["sceneItemTransform"]})
+			items = append(items, map[string]any{"sourceName": groupFixtureGroupName, "sourceUuid": f.groupUUID, "sceneItemId": float64(f.parentItemID), "sceneItemIndex": float64(f.parentPlacement.Index.ValueInt64()), "sceneItemEnabled": f.parentPlacement.Enabled.ValueBool(), "sceneItemTransform": p["sceneItemTransform"]})
 		}
 		return map[string]any{"sceneItems": items}, nil
 	case "GetGroupSceneItemList":
@@ -135,7 +135,7 @@ func (f *groupGraphFakeOBS) Req(_ context.Context, typ string, data map[string]a
 	case "SetSceneItemTransform":
 		itemID := int64Value(data["sceneItemId"])
 		tr := mapValue(data["sceneItemTransform"])
-		if stringValue(data["sceneName"]) == lunaLifecycleSceneName && itemID == f.parentItemID {
+		if stringValue(data["sceneName"]) == groupFixtureSceneName && itemID == f.parentItemID {
 			merged, err := groupGraphFakeCoreTransform(f.parentPlacement.Transform, tr)
 			if err != nil {
 				return nil, err
@@ -156,7 +156,7 @@ func (f *groupGraphFakeOBS) Req(_ context.Context, typ string, data map[string]a
 		return nil, fmt.Errorf("unknown item %d", itemID)
 	case "SetSceneItemEnabled", "SetSceneItemLocked", "SetSceneItemIndex":
 		itemID := int64Value(data["sceneItemId"])
-		if stringValue(data["sceneName"]) == lunaLifecycleSceneName && itemID == f.parentItemID {
+		if stringValue(data["sceneName"]) == groupFixtureSceneName && itemID == f.parentItemID {
 			switch typ {
 			case "SetSceneItemEnabled":
 				f.parentPlacement.Enabled = types.BoolValue(boolValue(data["sceneItemEnabled"]))
@@ -241,12 +241,12 @@ func (f *groupGraphFakeOBS) vendor(data map[string]any) (map[string]any, error) 
 	typ := stringValue(data["requestType"])
 	req := mapValue(data["requestData"])
 	operationID := stringValue(req["clientOperationId"])
-	reply := lunaLifecycleBridgeReply{outcome: "completed", mutationAttempted: operationID != "", postconditionVerified: true}
+	reply := groupFixtureBridgeReply{outcome: "completed", mutationAttempted: operationID != "", postconditionVerified: true}
 	switch typ {
 	case "GetCapabilities":
 		f.capabilityCalls++
 		reply.mutationAttempted = false
-		reply.result = lunaLifecycleCapabilities([]string{"GetGroup", "CreateGroup", "CreateInputInGroup", "AddSourceToGroup", "RemoveGroupChildPlacement"})
+		reply.result = groupFixtureCapabilities([]string{"GetGroup", "CreateGroup", "CreateInputInGroup", "AddSourceToGroup", "RemoveGroupChildPlacement"})
 		if f.capabilityCalls == f.capabilityFailAt {
 			if f.capabilityUnknown {
 				delete(reply.result, "streamingActive")
@@ -269,7 +269,7 @@ func (f *groupGraphFakeOBS) vendor(data map[string]any) (map[string]any, error) 
 			reply.result = f.groupResult()
 		}
 	case "CreateGroup":
-		f.groupExists, f.groupUUID, f.parentItemID = true, lunaLifecycleGroupUUID, 7
+		f.groupExists, f.groupUUID, f.parentItemID = true, groupFixtureGroupUUID, 7
 		f.parentPlacement, _ = bridgePlacementFromNative(mapValue(req["placement"]))
 		reply.result = f.groupResult()
 	case "CreateInputInGroup":
@@ -326,7 +326,7 @@ func (f *groupGraphFakeOBS) vendor(data map[string]any) (map[string]any, error) 
 	default:
 		return nil, fmt.Errorf("unexpected vendor request %s", typ)
 	}
-	return lunaLifecycleBridgeEnvelope(typ, operationID, reply), nil
+	return groupFixtureBridgeEnvelope(typ, operationID, reply), nil
 }
 
 func (f *groupGraphFakeOBS) childResult(child groupGraphFakeChild) map[string]any {
@@ -354,8 +354,8 @@ func (f *groupGraphFakeOBS) groupResult() map[string]any {
 		}
 	}
 	return map[string]any{
-		"scene":    map[string]any{"sourceName": lunaLifecycleSceneName, "sourceUuid": lunaLifecycleSceneUUID},
-		"group":    map[string]any{"sourceName": lunaLifecycleGroupName, "sourceUuid": f.groupUUID, "sceneItemId": float64(f.parentItemID), "groupWidth": maxX, "groupHeight": maxY, "placement": p},
+		"scene":    map[string]any{"sourceName": groupFixtureSceneName, "sourceUuid": groupFixtureSceneUUID},
+		"group":    map[string]any{"sourceName": groupFixtureGroupName, "sourceUuid": f.groupUUID, "sceneItemId": float64(f.parentItemID), "groupWidth": maxX, "groupHeight": maxY, "placement": p},
 		"children": children,
 	}
 }
@@ -387,14 +387,14 @@ func TestGroupGraphCreateCheckpointsAndFramesEveryStructuralMutation(t *testing.
 	}
 	fake := &groupGraphFakeOBS{parentPlacement: *model.ParentPlacement, nextChildID: 0}
 	sc := groupGraphSchema()
-	response := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, model)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, model)}, &response)
+	response := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, model)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc, model)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("create diagnostics: %v; calls=%v", response.Diagnostics, groupGraphSignificantCalls(fake))
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
-	if !got.ObservedComplete.ValueBool() || got.GroupUUID.ValueString() != lunaLifecycleGroupUUID || got.Children[0].SourceUUID.ValueString() != "input-left-new" || got.Children[1].SourceUUID.ValueString() != "input-right" {
+	groupFixtureRequireState(t, ctx, response.State, &got)
+	if !got.ObservedComplete.ValueBool() || got.GroupUUID.ValueString() != groupFixtureGroupUUID || got.Children[0].SourceUUID.ValueString() != "input-left-new" || got.Children[1].SourceUUID.ValueString() != "input-right" {
 		t.Fatalf("final state=%#v", got)
 	}
 	want := []string{"CreateGroup", "GetSourceScreenshot", "GetGroup", "CreateInputInGroup", "GetSourceScreenshot", "GetGroup", "CreateInputInGroup", "GetSourceScreenshot", "GetGroup"}
@@ -419,8 +419,8 @@ func TestGroupGraphCreateReachesMutationWithWhollyUnknownComputedObservations(t 
 		model.Children[i].SourceUUID, model.Children[i].ItemID = types.StringUnknown(), types.Int64Unknown()
 	}
 	fake := &groupGraphFakeOBS{parentPlacement: *model.ParentPlacement}
-	plan := lunaLifecycleSchemaAndPlan(t, ctx, groupGraphSchema(), groupGraphUnknownObservationPlanModel(t, model))
-	response := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), model)}
+	plan := groupFixtureSchemaAndPlan(t, ctx, groupGraphSchema(), groupGraphUnknownObservationPlanModel(t, model))
+	response := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), model)}
 	t.Setenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE", "obstf:CreateGroup")
 	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: plan}, &response)
 
@@ -452,19 +452,19 @@ func TestGroupGraphRepairCompensatesSurvivorThenParentAndSecondPassWritesZero(t 
 	state.ParentPlacement = &parentDrift
 	state.Children[1].Placement = &rightDrift
 	fake := &groupGraphFakeOBS{
-		groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
+		groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
 		children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightDrift}},
 	}
 	plan := groupGraphTestModel(left, right)
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
 	r := &groupGraphResource{client: &client{testRequester: fake}}
-	r.Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	r.Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("repair diagnostics: %v; calls=%v", response.Diagnostics, groupGraphSignificantCalls(fake))
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.Children[0].SourceUUID.ValueString() != "input-left-new" || got.Children[1].SourceUUID.ValueString() != "input-right" || got.Children[1].ItemID.ValueInt64() != 2 || got.ParentItemID.ValueInt64() != 7 || !got.ObservedComplete.ValueBool() {
 		t.Fatalf("repaired state=%#v", got)
 	}
@@ -474,12 +474,12 @@ func TestGroupGraphRepairCompensatesSurvivorThenParentAndSecondPassWritesZero(t 
 			transforms = append(transforms, fmt.Sprintf("%s/%d", stringValue(call.data["sceneName"]), int64Value(call.data["sceneItemId"])))
 		}
 	}
-	if fmt.Sprint(transforms) != fmt.Sprint([]string{lunaLifecycleGroupName + "/2", lunaLifecycleSceneName + "/7"}) {
+	if fmt.Sprint(transforms) != fmt.Sprint([]string{groupFixtureGroupName + "/2", groupFixtureSceneName + "/7"}) {
 		t.Fatalf("transform order=%v", transforms)
 	}
 	before := len(fake.calls)
-	second := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, got)}
-	r.Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, got), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, got)}, &second)
+	second := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, got)}
+	r.Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, got), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, got)}, &second)
 	if second.Diagnostics.HasError() {
 		t.Fatalf("second reconcile diagnostics: %v", second.Diagnostics)
 	}
@@ -498,13 +498,13 @@ func TestGroupGraphExtraChildRefusesBeforeMembership(t *testing.T) {
 	plan := groupGraphTestModel(left, right)
 	rightPlacement := *plan.Children[1].Placement
 	extraPlacement := groupGraphTestPlacement(300, 2)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, nextChildID: 3, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, nextChildID: 3, children: []groupGraphFakeChild{
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightPlacement},
 		{name: "Unmanaged", uuid: "input-extra", kind: "image_source", file: right, itemID: 3, width: 10, height: 10, placement: extraPlacement},
 	}}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected extra-child refusal")
 	}
@@ -524,17 +524,17 @@ func TestGroupGraphReadSchedulesExplicitMissingChildRepair(t *testing.T) {
 	state := groupGraphTestModel(left, right)
 	parentDrift := groupGraphTestPlacement(960, 0)
 	rightDrift := groupGraphTestPlacement(0, 1)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: parentDrift, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: parentDrift, children: []groupGraphFakeChild{
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightDrift},
 	}}
 	sc := groupGraphSchema()
-	response := resource.ReadResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}, &response)
+	response := resource.ReadResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("read diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.Children[0].Present.ValueBool() || got.Children[0].SourceUUID.ValueString() != "input-left" || got.Children[0].ItemID.ValueInt64() != 1 || got.ObservedComplete.ValueBool() {
 		t.Fatalf("missing child state=%#v", got.Children[0])
 	}
@@ -553,20 +553,20 @@ func TestGroupGraphFrameFailureStopsAfterCheckpointedGroup(t *testing.T) {
 	}
 	fake := &groupGraphFakeOBS{parentPlacement: *model.ParentPlacement, failScreenshot: true}
 	sc := groupGraphSchema()
-	response := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, model)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, model)}, &response)
+	response := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, model)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc, model)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected frame failure")
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
-	if got.GroupUUID.ValueString() != lunaLifecycleGroupUUID || got.ParentItemID.ValueInt64() != 7 {
+	groupFixtureRequireState(t, ctx, response.State, &got)
+	if got.GroupUUID.ValueString() != groupFixtureGroupUUID || got.ParentItemID.ValueInt64() != 7 {
 		t.Fatalf("created group identity was not checkpointed: %#v", got)
 	}
 	if got.Children[0].Present.ValueBool() || got.Children[1].Present.ValueBool() {
 		t.Fatalf("uncreated children were falsely checkpointed present: %#v", got.Children)
 	}
-	if count := lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup"); count != 0 {
+	if count := groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup"); count != 0 {
 		t.Fatalf("child creation continued after frame failure: %d", count)
 	}
 }
@@ -581,17 +581,17 @@ func TestGroupGraphFirstChildBarrierFailureKeepsOnlyCreatedPrefixPresent(t *test
 	}
 	fake := &groupGraphFakeOBS{parentPlacement: *model.ParentPlacement, failScreenshotAt: 2}
 	sc := groupGraphSchema()
-	response := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, model)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, model)}, &response)
+	response := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, model)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc, model)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected first-child frame failure")
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if !got.ParentPresent.ValueBool() || !got.Children[0].Present.ValueBool() || got.Children[0].SourceUUID.ValueString() != "input-left-new" || got.Children[1].Present.ValueBool() || !got.Children[1].SourceUUID.IsUnknown() {
 		t.Fatalf("partial create prefix state=%#v", got)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup") != 1 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup") != 1 {
 		t.Fatal("second child creation continued after failed first-child barrier")
 	}
 }
@@ -605,16 +605,16 @@ func TestGroupGraphOutputBecomingActiveRefusesBeforeMembership(t *testing.T) {
 	rightDrift := groupGraphTestPlacement(0, 1)
 	state.ParentPlacement, state.Children[1].Placement = &parentDrift, &rightDrift
 	plan := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: parentDrift, activeOutput: "GetStreamStatus", children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: parentDrift, activeOutput: "GetStreamStatus", children: []groupGraphFakeChild{
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightDrift},
 	}}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected active-output refusal")
 	}
-	if count := lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup"); count != 0 {
+	if count := groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup"); count != 0 {
 		t.Fatalf("membership sent while output active: %d", count)
 	}
 }
@@ -642,17 +642,17 @@ func TestGroupGraphOutputBecomingUnsafeRefusesAtSetterPhaseBoundary(t *testing.T
 			state.ParentPlacement, state.Children[1].Placement = &parentDrift, &rightDrift
 			plan := groupGraphTestModel(left, right)
 			fake := &groupGraphFakeOBS{
-				groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
+				groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
 				capabilityFailAt: tc.capabilityFailAt, capabilityUnknown: tc.unknown,
 				children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightDrift}},
 			}
 			sc := groupGraphSchema()
-			response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-			(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+			response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+			(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 			if !response.Diagnostics.HasError() {
 				t.Fatal("unsafe phase output was accepted")
 			}
-			if got := lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "SetSceneItemTransform"); got != tc.wantSetters {
+			if got := groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "SetSceneItemTransform"); got != tc.wantSetters {
 				t.Fatalf("setter count=%d want %d; calls=%#v", got, tc.wantSetters, fake.calls)
 			}
 			for _, call := range fake.calls {
@@ -661,7 +661,7 @@ func TestGroupGraphOutputBecomingUnsafeRefusesAtSetterPhaseBoundary(t *testing.T
 				}
 			}
 			var partial groupGraphModel
-			lunaLifecycleRequireState(t, ctx, response.State, &partial)
+			groupFixtureRequireState(t, ctx, response.State, &partial)
 			if partial.ParentPlacement.Transform.X.ValueFloat64() != 960 {
 				t.Fatalf("unexecuted parent was not retained at actual X=960: %#v", partial.ParentPlacement)
 			}
@@ -684,12 +684,12 @@ func TestGroupGraphDeleteFramesEachRemovalBeforeNextExpectedPlacement(t *testing
 	ctx := context.Background()
 	left, right := groupGraphTestAsset(t, "left.png"), groupGraphTestAsset(t, "right.png")
 	m := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, rebaseAfterRemove: true, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, rebaseAfterRemove: true, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, itemID: 1, width: 960, height: 1080, placement: *m.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *m.Children[1].Placement},
 	}}
-	response := resource.DeleteResponse{State: lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), m)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Delete(ctx, resource.DeleteRequest{State: lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), m)}, &response)
+	response := resource.DeleteResponse{State: groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), m)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Delete(ctx, resource.DeleteRequest{State: groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), m)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("delete diagnostics: %v", response.Diagnostics)
 	}
@@ -714,20 +714,20 @@ func TestGroupGraphDeleteResumesAfterAuthoritativeRemovalWithoutReplay(t *testin
 	ctx := context.Background()
 	left, right := groupGraphTestAsset(t, "left.png"), groupGraphTestAsset(t, "right.png")
 	m := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, rebaseAfterRemove: true, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, rebaseAfterRemove: true, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, itemID: 1, width: 960, height: 1080, placement: *m.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *m.Children[1].Placement},
 	}}
 	sc := groupGraphSchema()
 	t.Setenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE", "obstf:RemoveGroupChildPlacement")
-	first := resource.DeleteResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, m)}
+	first := resource.DeleteResponse{State: groupFixtureSchemaAndState(t, ctx, sc, m)}
 	r := &groupGraphResource{client: &client{testRequester: fake}}
-	r.Delete(ctx, resource.DeleteRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, m)}, &first)
+	r.Delete(ctx, resource.DeleteRequest{State: groupFixtureSchemaAndState(t, ctx, sc, m)}, &first)
 	if !first.Diagnostics.HasError() {
 		t.Fatal("expected interruption after first authoritative removal")
 	}
 	var partial groupGraphModel
-	lunaLifecycleRequireState(t, ctx, first.State, &partial)
+	groupFixtureRequireState(t, ctx, first.State, &partial)
 	if partial.Children[0].Present.ValueBool() || partial.Children[0].SourceUUID.ValueString() != "input-left" || len(fake.children) != 1 || fake.children[0].uuid != "input-right" {
 		t.Fatalf("first removal partial state=%#v live=%#v", partial.Children, fake.children)
 	}
@@ -740,11 +740,11 @@ func TestGroupGraphDeleteResumesAfterAuthoritativeRemovalWithoutReplay(t *testin
 		t.Fatal("expected resumed-delete owed barrier failure")
 	}
 	var barrierState groupGraphModel
-	lunaLifecycleRequireState(t, ctx, barrierFailure.State, &barrierState)
+	groupFixtureRequireState(t, ctx, barrierFailure.State, &barrierState)
 	if len(barrierState.Children) != 2 || barrierState.Children[0].Present.ValueBool() {
 		t.Fatalf("failed owed barrier discarded the completed-prefix marker: %#v", barrierState.Children)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "RemoveGroupChildPlacement") != 1 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "RemoveGroupChildPlacement") != 1 {
 		t.Fatal("next removal was sent after a failed resumed-delete barrier")
 	}
 
@@ -755,7 +755,7 @@ func TestGroupGraphDeleteResumesAfterAuthoritativeRemovalWithoutReplay(t *testin
 		t.Fatalf("second refresh after owed barrier failure: %v", refreshedAgain.Diagnostics)
 	}
 	var refreshedModel groupGraphModel
-	lunaLifecycleRequireState(t, ctx, refreshedAgain.State, &refreshedModel)
+	groupFixtureRequireState(t, ctx, refreshedAgain.State, &refreshedModel)
 	if refreshedModel.Children[0].Present.ValueBool() || refreshedModel.Children[1].SourceUUID.ValueString() != "input-right" {
 		t.Fatalf("refresh lost completed-prefix evidence: %#v", refreshedModel.Children)
 	}
@@ -814,16 +814,16 @@ func TestGroupGraphDeleteResumeRefusesSameNameUnknownSource(t *testing.T) {
 	m := groupGraphTestModel(left, right)
 	m.Children[0].Present = types.BoolValue(false)
 	m.ObservedComplete = types.BoolValue(false)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement,
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement,
 		children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *m.Children[1].Placement}},
 		detached: []groupGraphFakeChild{{name: "Party Light Left", uuid: "wrong-left", kind: "image_source", file: left, width: 960, height: 1080, placement: *m.Children[0].Placement}},
 	}
-	response := resource.DeleteResponse{State: lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), m)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Delete(ctx, resource.DeleteRequest{State: lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), m)}, &response)
+	response := resource.DeleteResponse{State: groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), m)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Delete(ctx, resource.DeleteRequest{State: groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), m)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("same-name replacement was accepted as a completed delete prefix")
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "RemoveGroupChildPlacement") != 0 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "RemoveGroupChildPlacement") != 0 {
 		t.Fatal("surviving child was removed after ambiguous prior-prefix source")
 	}
 }
@@ -834,18 +834,18 @@ func TestGroupGraphDeleteResumesAfterLaterChildFrameFailure(t *testing.T) {
 	m := groupGraphTestModel(left, right)
 	m.Children[0].Present = types.BoolValue(false)
 	m.ObservedComplete = types.BoolValue(false)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, failScreenshotAt: 2, rebaseAfterRemove: true, pendingRebase: true,
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *m.ParentPlacement, failScreenshotAt: 2, rebaseAfterRemove: true, pendingRebase: true,
 		children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *m.Children[1].Placement}},
 	}
 	sc := groupGraphSchema()
-	first := resource.DeleteResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, m)}
+	first := resource.DeleteResponse{State: groupFixtureSchemaAndState(t, ctx, sc, m)}
 	r := &groupGraphResource{client: &client{testRequester: fake}}
-	r.Delete(ctx, resource.DeleteRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, m)}, &first)
+	r.Delete(ctx, resource.DeleteRequest{State: groupFixtureSchemaAndState(t, ctx, sc, m)}, &first)
 	if !first.Diagnostics.HasError() {
 		t.Fatal("expected later-child post-removal frame failure")
 	}
 	var partial groupGraphModel
-	lunaLifecycleRequireState(t, ctx, first.State, &partial)
+	groupFixtureRequireState(t, ctx, first.State, &partial)
 	if len(partial.Children) != 1 || partial.Children[0].StableKey.ValueString() != "right" || partial.Children[0].Present.ValueBool() || len(fake.children) != 0 {
 		t.Fatalf("later-child partial state=%#v live=%#v", partial.Children, fake.children)
 	}
@@ -879,22 +879,22 @@ func TestGroupGraphRepairReattachesSurvivingSourceWithoutRecreation(t *testing.T
 	state.ObservedComplete = types.BoolValue(false)
 	plan := groupGraphTestModel(left, right)
 	fake := &groupGraphFakeOBS{
-		groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, nextChildID: 2,
+		groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, nextChildID: 2,
 		children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *plan.Children[1].Placement}},
 		detached: []groupGraphFakeChild{{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, width: 960, height: 1080, placement: *plan.Children[0].Placement}},
 	}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("reattach diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.Children[0].SourceUUID.ValueString() != "input-left" || got.Children[0].ItemID.ValueInt64() != 3 {
 		t.Fatalf("reattached binding=%#v", got.Children[0])
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "AddSourceToGroup") != 1 || lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "AddSourceToGroup") != 1 || groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
 		t.Fatalf("wrong repair primitive: %v", groupGraphSignificantCalls(fake))
 	}
 }
@@ -906,22 +906,22 @@ func TestGroupGraphParentAnchorRepairKeepsStableResourceIdentity(t *testing.T) {
 	state.ParentPresent = types.BoolValue(false)
 	state.ObservedComplete = types.BoolValue(false)
 	plan := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 0, parentPlacement: *plan.ParentPlacement, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 0, parentPlacement: *plan.ParentPlacement, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, itemID: 1, width: 960, height: 1080, placement: *plan.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *plan.Children[1].Placement},
 	}}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("anchor repair diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.ID.ValueString() != state.ID.ValueString() || got.GroupUUID.ValueString() != state.GroupUUID.ValueString() || got.ParentItemID.ValueInt64() != 99 || !got.ParentPresent.ValueBool() {
 		t.Fatalf("anchor repair state=%#v", got)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateSceneItem") != 1 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateSceneItem") != 1 {
 		t.Fatal("anchor repair did not create exactly one parent item")
 	}
 }
@@ -930,10 +930,10 @@ func TestGroupGraphReadRemovesStateOnlyForAuthoritativeGroupAbsence(t *testing.T
 	ctx := context.Background()
 	left, right := groupGraphTestAsset(t, "left.png"), groupGraphTestAsset(t, "right.png")
 	state := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: false, groupUUID: lunaLifecycleGroupUUID, parentItemID: 0, parentPlacement: *state.ParentPlacement}
+	fake := &groupGraphFakeOBS{groupExists: false, groupUUID: groupFixtureGroupUUID, parentItemID: 0, parentPlacement: *state.ParentPlacement}
 	sc := groupGraphSchema()
-	response := resource.ReadResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}, &response)
+	response := resource.ReadResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("group absence diagnostics: %v", response.Diagnostics)
 	}
@@ -946,19 +946,19 @@ func TestGroupGraphReadRecordsMissingParentWithoutDiscardingBindings(t *testing.
 	ctx := context.Background()
 	left, right := groupGraphTestAsset(t, "left.png"), groupGraphTestAsset(t, "right.png")
 	state := groupGraphTestModel(left, right)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 0, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 0, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, itemID: 1, width: 960, height: 1080, placement: *state.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *state.Children[1].Placement},
 	}}
 	sc := groupGraphSchema()
-	response := resource.ReadResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}, &response)
+	response := resource.ReadResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Read(ctx, resource.ReadRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("missing parent read diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
-	if got.ParentPresent.ValueBool() || got.ParentItemID.ValueInt64() != 7 || got.GroupUUID.ValueString() != lunaLifecycleGroupUUID || got.ObservedComplete.ValueBool() {
+	groupFixtureRequireState(t, ctx, response.State, &got)
+	if got.ParentPresent.ValueBool() || got.ParentItemID.ValueInt64() != 7 || got.GroupUUID.ValueString() != groupFixtureGroupUUID || got.ObservedComplete.ValueBool() {
 		t.Fatalf("missing parent state=%#v", got)
 	}
 }
@@ -970,16 +970,16 @@ func TestGroupGraphConcurrentPlacementChangeRefusesBeforeMembership(t *testing.T
 	state.Children[0].Present = types.BoolValue(false)
 	plan := groupGraphTestModel(left, right)
 	concurrent := groupGraphTestPlacement(15, 1)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *plan.ParentPlacement, children: []groupGraphFakeChild{
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: concurrent},
 	}}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("concurrent placement change was normalized")
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
 		t.Fatal("membership mutation followed concurrent placement change")
 	}
 }
@@ -992,22 +992,22 @@ func TestGroupGraphStableKeyReorderPreservesNativeBindings(t *testing.T) {
 	plan.Children = []groupGraphChildModel{plan.Children[1], plan.Children[0]}
 	plan.Children[0].Placement = placementPointer(groupGraphTestPlacement(960, 0))
 	plan.Children[1].Placement = placementPointer(groupGraphTestPlacement(0, 1))
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: left, itemID: 1, width: 960, height: 1080, placement: *state.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: *state.Children[1].Placement},
 	}}
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, plan)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, plan)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("reorder diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.Children[0].StableKey.ValueString() != "right" || got.Children[0].SourceUUID.ValueString() != "input-right" || got.Children[0].ItemID.ValueInt64() != 2 || got.Children[1].StableKey.ValueString() != "left" || got.Children[1].SourceUUID.ValueString() != "input-left" || got.Children[1].ItemID.ValueInt64() != 1 {
 		t.Fatalf("reordered bindings=%#v", got.Children)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "SetSceneItemIndex") != 1 || lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "SetSceneItemIndex") != 1 || groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "CreateInputInGroup") != 0 {
 		t.Fatalf("reorder sent wrong mutations: %#v", fake.calls)
 	}
 }
@@ -1023,18 +1023,18 @@ func TestGroupGraphPartialSetterStateKeepsUnexecutedParentActual(t *testing.T) {
 	state.ParentPlacement, state.Children[1].Placement = &parentDrift, &rightDrift
 	plan := groupGraphTestModel(left, right)
 	fake := &groupGraphFakeOBS{
-		groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
+		groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: parentDrift, nextChildID: 2,
 		children: []groupGraphFakeChild{{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: right, itemID: 2, width: 960, height: 1080, placement: rightDrift}},
 	}
 	t.Setenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE", "SetSceneItemTransform")
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected injected interruption")
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.ParentPlacement.Transform.X.ValueFloat64() != 960 || got.ObservedParent.Placement.Transform.X.ValueFloat64() != 960 {
 		t.Fatalf("unexecuted parent was falsely checkpointed desired: parent=%v observed=%v", got.ParentPlacement.Transform.X.ValueFloat64(), got.ObservedParent.Placement.Transform.X.ValueFloat64())
 	}
@@ -1046,7 +1046,7 @@ func TestGroupGraphPartialSetterStateKeepsUnexecutedParentActual(t *testing.T) {
 	if leftIndex < 0 || got.Children[leftIndex].SourceUUID.ValueString() != "input-left-new" || got.Children[leftIndex].ItemID.ValueInt64() != 3 {
 		t.Fatalf("replacement binding was not retained: %#v", got.Children)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "SetSceneItemTransform") != 1 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "SetSceneItemTransform") != 1 {
 		t.Fatal("parent setter continued after injected right-child interruption")
 	}
 }
@@ -1057,19 +1057,19 @@ func TestGroupGraphPartialSettingsStateKeepsUntouchedSiblingActual(t *testing.T)
 	leftNew, rightNew := groupGraphTestAsset(t, "left-new.png"), groupGraphTestAsset(t, "right-new.png")
 	state := groupGraphTestModel(leftOld, rightOld)
 	plan := groupGraphTestModel(leftNew, rightNew)
-	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: lunaLifecycleGroupUUID, parentItemID: 7, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
+	fake := &groupGraphFakeOBS{groupExists: true, groupUUID: groupFixtureGroupUUID, parentItemID: 7, parentPlacement: *state.ParentPlacement, children: []groupGraphFakeChild{
 		{name: "Party Light Left", uuid: "input-left", kind: "image_source", file: leftOld, itemID: 1, width: 960, height: 1080, placement: *state.Children[0].Placement},
 		{name: "Party Light Right", uuid: "input-right", kind: "image_source", file: rightOld, itemID: 2, width: 960, height: 1080, placement: *state.Children[1].Placement},
 	}}
 	t.Setenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE", "SetInputSettings")
 	sc := groupGraphSchema()
-	response := resource.UpdateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, state)}
-	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc, plan)}, &response)
+	response := resource.UpdateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, state)}
+	(&groupGraphResource{client: &client{testRequester: fake}}).Update(ctx, resource.UpdateRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: groupFixtureSchemaAndPlan(t, ctx, sc, plan)}, &response)
 	if !response.Diagnostics.HasError() {
 		t.Fatal("expected injected settings interruption")
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	leftIndex, rightIndex := groupGraphChildIndexByStableKey(got.Children, "left"), groupGraphChildIndexByStableKey(got.Children, "right")
 	if got.Children[leftIndex].File.ValueString() != leftNew {
 		t.Fatalf("completed left settings were not checkpointed: %s", got.Children[leftIndex].File.ValueString())
@@ -1077,7 +1077,7 @@ func TestGroupGraphPartialSettingsStateKeepsUntouchedSiblingActual(t *testing.T)
 	if got.Children[rightIndex].File.ValueString() != rightOld {
 		t.Fatalf("untouched right settings falsely claimed desired: got %s want actual %s", got.Children[rightIndex].File.ValueString(), rightOld)
 	}
-	if lunaLifecycleMutationCount(&lunaLifecycleScript{calls: fake.calls}, "SetInputSettings") != 1 {
+	if groupFixtureMutationCount(&groupFixtureScript{calls: fake.calls}, "SetInputSettings") != 1 {
 		t.Fatal("settings loop continued after authoritative interruption")
 	}
 }

@@ -284,7 +284,13 @@ func (r *groupGraphResource) Create(ctx context.Context, req resource.CreateRequ
 			}
 		}
 
-		placement, _ := desired.ParentPlacement.request()
+		siblings, countErr := containerItemCount(ctx, cl, scene.Name, false)
+		if countErr != nil {
+			return countErr
+		}
+		parentPlacement := *desired.ParentPlacement
+		parentPlacement.Index = types.Int64Value(clampCreateIndex(desired.ParentPlacement.Index.ValueInt64(), siblings))
+		placement, _ := parentPlacement.request()
 		envelope, callErr := bridgeMutation(ctx, cl, desired.Collection.ValueString(), "CreateGroup", bridgeOperationID("create-group-graph", desired.Name.ValueString()), map[string]any{
 			"scene": bridgeIdentity(scene.UUID, scene.Name, 0), "groupName": desired.Name.ValueString(), "placement": placement,
 		})
@@ -390,8 +396,8 @@ func trustedGroupMutationResult(envelope bridgeEnvelope, callErr error) (bridgeG
 	if callErr != nil && !isAuthoritativeNativeInterruption(callErr) {
 		return bridgeGroupObservation{}, fmt.Errorf("bridge group result is not authoritative: %w", callErr)
 	}
-	if envelope.Outcome == "uncertain" {
-		return bridgeGroupObservation{}, fmt.Errorf("bridge group result is not authoritative because the mutation outcome is uncertain")
+	if envelope.Outcome != "completed" {
+		return bridgeGroupObservation{}, fmt.Errorf("bridge group result is not authoritative because the mutation outcome is %s", envelope.Outcome)
 	}
 	return bridgeGroupFromResult(envelope.Result)
 }
@@ -400,8 +406,8 @@ func trustedChildMutationResult(envelope bridgeEnvelope, callErr error) (bridgeC
 	if callErr != nil && !isAuthoritativeNativeInterruption(callErr) {
 		return bridgeChildObservation{}, fmt.Errorf("bridge child result is not authoritative: %w", callErr)
 	}
-	if envelope.Outcome == "uncertain" {
-		return bridgeChildObservation{}, fmt.Errorf("bridge child result is not authoritative because the mutation outcome is uncertain")
+	if envelope.Outcome != "completed" {
+		return bridgeChildObservation{}, fmt.Errorf("bridge child result is not authoritative because the mutation outcome is %s", envelope.Outcome)
 	}
 	return bridgeChildFromResult(envelope.Result)
 }
@@ -1192,6 +1198,9 @@ func reconcileGroupGraph(ctx context.Context, cl requester, m *groupGraphModel, 
 				}
 			}
 			observedIndex := groupGraphObservedChildIndex(observed.Children, got.ItemID)
+			if observedIndex < 0 {
+				return observed, fmt.Errorf("child item %d vanished from the group between observation and reorder", got.ItemID)
+			}
 			knownIndex := observed.Children[observedIndex].Placement.Index.ValueInt64()
 			var checkpointErr error
 			updated, err := updateGroupGraphItem(ctx, cl, m.Collection.ValueString(), observed.Name, got.ItemID, got.Placement, m.Children[i].Placement, func(current bridgePlacementModel) {
@@ -1235,12 +1244,20 @@ func reconcileGroupGraph(ctx context.Context, cl requester, m *groupGraphModel, 
 		return observed, fmt.Errorf("pre-parent roster: %w", err)
 	}
 
-	if diff := bridgePlacementDifference(observed.Placement, *m.ParentPlacement); diff != "" {
+	siblings, countErr := containerItemCount(ctx, cl, m.SceneName.ValueString(), false)
+	if countErr != nil {
+		return observed, countErr
+	}
+	// parentWant is the declared parent placement clamped to the scene's current size;
+	// state keeps the declared index (see clampCreateIndex).
+	parentWant := *m.ParentPlacement
+	parentWant.Index = types.Int64Value(clampCreateIndex(m.ParentPlacement.Index.ValueInt64(), siblings-1))
+	if diff := bridgePlacementDifference(observed.Placement, parentWant); diff != "" {
 		if _, err := bridgeCapabilities(ctx, cl, m.Collection.ValueString(), "GetGroup", true); err != nil {
 			return observed, err
 		}
 		var checkpointErr error
-		updated, err := updateGroupGraphItem(ctx, cl, m.Collection.ValueString(), m.SceneName.ValueString(), observed.ItemID, observed.Placement, m.ParentPlacement, func(current bridgePlacementModel) {
+		updated, err := updateGroupGraphItem(ctx, cl, m.Collection.ValueString(), m.SceneName.ValueString(), observed.ItemID, observed.Placement, &parentWant, func(current bridgePlacementModel) {
 			observed.Placement = current
 			if mergeErr := mergeGroupGraphObservation(actual, *m, observed); mergeErr != nil {
 				checkpointErr = mergeErr
@@ -1266,7 +1283,7 @@ func reconcileGroupGraph(ctx context.Context, cl requester, m *groupGraphModel, 
 			return observed, err
 		}
 	}
-	if diff := bridgePlacementDifference(observed.Placement, *m.ParentPlacement); diff != "" {
+	if diff := bridgePlacementDifference(observed.Placement, parentWant); diff != "" {
 		return observed, fmt.Errorf("final parent placement mismatch: %s", diff)
 	}
 	if err := requireExactGroupGraphChildren(observed, m.Children, wantWidth, wantHeight); err != nil {

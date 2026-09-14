@@ -106,3 +106,13 @@ func TestLockGateExclusiveExcludesEverything(t *testing.T) {
 	rel()
 	wg.Wait()
 }
+
+type fooResource struct{}
+
+func (*fooResource) Create() string { return opLabel() }
+
+func TestOpLabelRendersMethodReceiver(t *testing.T) {
+	if got := (&fooResource{}).Create(); got != "fooResource.Create" {
+		t.Fatalf("opLabel()=%q", got)
+	}
+}

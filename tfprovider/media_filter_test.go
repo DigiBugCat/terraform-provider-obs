@@ -98,41 +98,6 @@ func TestWaitMediaInputHonorsCancellationAfterMismatch(t *testing.T) {
 	}
 }
 
-func TestColorFilterComparisonCoversParentOwnedFields(t *testing.T) {
-	m := colorFilterModel{Name: types.StringValue("Color Correction"), Kind: types.StringValue("color_filter_v2"), HueShift: types.Float64Value(180), Opacity: types.Float64Value(0), Enabled: types.BoolValue(true), Index: types.Int64Value(0)}
-	base := filterObservation{Name: "Color Correction", Kind: "color_filter_v2", Enabled: true, Index: 0, Settings: map[string]any{"hue_shift": 180.0, "opacity": 0.0}}
-	if got := filterMismatch(base, base.Settings, m); got != "" {
-		t.Fatalf("exact mismatch=%s", got)
-	}
-	cases := []struct {
-		want string
-		edit func(*filterObservation)
-	}{{"kind", func(x *filterObservation) { x.Kind = "move_value_filter" }}, {"enabled", func(x *filterObservation) { x.Enabled = false }}, {"index", func(x *filterObservation) { x.Index = 1 }}, {"hue_shift", func(x *filterObservation) { x.Settings = map[string]any{"hue_shift": 181.0, "opacity": 0.0} }}, {"opacity", func(x *filterObservation) { x.Settings = map[string]any{"hue_shift": 180.0, "opacity": 1.0} }}}
-	for _, tc := range cases {
-		got := base
-		tc.edit(&got)
-		if mismatch := filterMismatch(got, got.Settings, m); mismatch != tc.want {
-			t.Fatalf("got=%s want=%s", mismatch, tc.want)
-		}
-	}
-}
-
-func TestColorDefaultsAreExplicitAndWrongKindDoesNotAlias(t *testing.T) {
-	values, origins, err := resolveColorSettings(map[string]any{"hue_shift": 180.0}, map[string]any{"hue_shift": 0.0, "opacity": 1.0})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if values["opacity"] != 1.0 || origins["opacity"] != "default" {
-		t.Fatalf("values=%#v origins=%#v", values, origins)
-	}
-	if _, _, err := resolveColorSettings(map[string]any{"hue_shift": "180", "opacity": 0.0}, map[string]any{}); err == nil {
-		t.Fatal("string-coerced hue accepted")
-	}
-	if isColorFilterKind("color_filter") || !isColorFilterKind("color_filter_v2") {
-		t.Fatal("filter kind pin is not exact")
-	}
-}
-
 func TestSourceFiltersRejectsMalformedAndDuplicateName(t *testing.T) {
 	f := &fakeRequester{responses: map[string]map[string]any{"GetSourceFilterList": {"filters": "bad"}}}
 	if _, err := sourceFilters(context.Background(), f, "Party Lights"); err == nil {

@@ -27,11 +27,11 @@ func (f *deletedGroupParentFake) Req(ctx context.Context, typ string, data map[s
 		return map[string]any{"scenes": ss}, nil
 	}
 	if typ == "GetSceneItemList" {
-		name := lunaLifecycleGroupName
+		name := groupFixtureGroupName
 		if f.mode == "renamed-group" {
 			name = "Renamed group"
 		}
-		it := itemObservation{SourceUUID: lunaLifecycleGroupUUID, SourceName: name, ItemID: 12, Transform: groupItemTransform()}
+		it := itemObservation{SourceUUID: groupFixtureGroupUUID, SourceName: name, ItemID: 12, Transform: groupItemTransform()}
 		return map[string]any{"sceneItems": []any{f.base.roster(it)}}, nil
 	}
 	if typ == "GetGroupList" {
@@ -41,7 +41,7 @@ func (f *deletedGroupParentFake) Req(ctx context.Context, typ string, data map[s
 		case "missing-list":
 			return map[string]any{}, nil
 		case "surviving-group", "name-conflict":
-			return map[string]any{"groups": []any{lunaLifecycleGroupName}}, nil
+			return map[string]any{"groups": []any{groupFixtureGroupName}}, nil
 		case "renamed-group":
 			return map[string]any{"groups": []any{"Renamed group"}}, nil
 		default:
@@ -52,7 +52,7 @@ func (f *deletedGroupParentFake) Req(ctx context.Context, typ string, data map[s
 		return map[string]any{"sceneItems": []any{}}, nil
 	}
 	if typ == "CallVendorRequest" && data["requestType"] == "GetGroup" {
-		return lunaLifecycleBridgeEnvelope("GetGroup", "", lunaLifecycleBridgeReply{outcome: "failed", code: "scene_not_found", message: "parent scene absent", postconditionVerified: true}), nil
+		return groupFixtureBridgeEnvelope("GetGroup", "", groupFixtureBridgeReply{outcome: "failed", code: "scene_not_found", message: "parent scene absent", postconditionVerified: true}), nil
 	}
 	return f.base.Req(ctx, typ, data)
 }
@@ -63,8 +63,8 @@ func TestGroupRefreshAfterParentSceneDeletion(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			f := &deletedGroupParentFake{base: newGroupItemFake(), mode: mode}
 			r := &groupResource{client: &client{testRequester: f}}
-			m := lunaLifecycleGroupModel(7, lunaLifecycleSceneName)
-			state := lunaLifecycleSchemaAndState(t, ctx, lunaLifecycleGroupSchema(ctx), &m)
+			m := groupFixtureGroupModel(7, groupFixtureSceneName)
+			state := groupFixtureSchemaAndState(t, ctx, groupFixtureGroupSchema(ctx), &m)
 			read := resource.ReadResponse{State: state}
 			r.Read(ctx, resource.ReadRequest{State: state}, &read)
 			wantError := mode != "absent"
@@ -93,7 +93,7 @@ func TestGroupGraphRefreshAfterParentSceneDeletion(t *testing.T) {
 	f := &deletedGroupParentFake{base: newGroupItemFake(), mode: "absent"}
 	r := &groupGraphResource{client: &client{testRequester: f}}
 	m := groupGraphTestModel("/tmp/left.png", "/tmp/right.png")
-	state := lunaLifecycleSchemaAndState(t, ctx, groupGraphSchema(), &m)
+	state := groupFixtureSchemaAndState(t, ctx, groupGraphSchema(), &m)
 	read := resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, &read)
 	if read.Diagnostics.HasError() || !read.State.Raw.IsNull() {

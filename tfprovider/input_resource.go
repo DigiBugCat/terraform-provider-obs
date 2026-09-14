@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -53,7 +52,7 @@ func (r *inputResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 
 func validateImagePlan(m inputModel) error {
 	if m.Kind.ValueString() != "image_source" {
-		return fmt.Errorf("pilot supports only image_source, got %q", m.Kind.ValueString())
+		return fmt.Errorf("obs_input supports only image_source; use obs_source for other kinds, got %q", m.Kind.ValueString())
 	}
 	p := m.File.ValueString()
 	if !filepath.IsAbs(p) {
@@ -128,10 +127,10 @@ func (r *inputResource) Create(ctx context.Context, req resource.CreateRequest, 
 		if err := setItem(ctx, cl, m.Collection.ValueString(), scene.Name, id, m.AnchorEnabled.ValueBool(), anchorIndex, *m.AnchorTransform); err != nil {
 			return err
 		}
-		if _, err := waitInputExpected(ctx, cl, in.UUID, m.Name.ValueString(), m.Kind.ValueString(), m.File.ValueString(), m.Unload.ValueBool(), 40, 100*time.Millisecond); err != nil {
+		if _, err := waitInputExpected(ctx, cl, in.UUID, m.Name.ValueString(), m.Kind.ValueString(), m.File.ValueString(), m.Unload.ValueBool(), postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, m.AnchorEnabled.ValueBool(), anchorIndex, *m.AnchorTransform, 40, 100*time.Millisecond); err != nil {
+		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, m.AnchorEnabled.ValueBool(), anchorIndex, *m.AnchorTransform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		return nil
@@ -185,8 +184,8 @@ func (r *inputResource) Read(ctx context.Context, req resource.ReadRequest, resp
 			m.AnchorSceneName = types.StringNull()
 			return nil
 		}
-		if it.SourceUUID != in.UUID {
-			return fmt.Errorf("anchor item %d points to source UUID %s, expected %s", it.ItemID, it.SourceUUID, in.UUID)
+		if err := anchorIdentityError(true, it, in.UUID); err != nil {
+			return err
 		}
 		m.AnchorEnabled = types.BoolValue(it.Enabled)
 		m.AnchorIndex = types.Int64Value(it.Index)
@@ -241,8 +240,18 @@ func (r *inputResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		if err != nil {
 			return err
 		}
-		if exists && it.SourceUUID != in.UUID {
-			return fmt.Errorf("anchor item identity rebound to another source")
+		if err := anchorIdentityError(exists, it, in.UUID); err != nil {
+			return err
+		}
+		siblings, err := containerItemCount(ctx, cl, scene.Name, false)
+		if err != nil {
+			return err
+		}
+		// A re-created anchor lands at the end of the list; an existing one moves within it.
+		// State keeps the declared index (see clampCreateIndex).
+		anchorIndex := clampCreateIndex(plan.AnchorIndex.ValueInt64(), siblings-1)
+		if !exists {
+			anchorIndex = clampCreateIndex(plan.AnchorIndex.ValueInt64(), siblings)
 		}
 		if !exists {
 			x, err := mutation(ctx, cl, plan.Collection.ValueString(), "CreateSceneItem", map[string]any{"sceneUuid": scene.UUID, "sourceUuid": in.UUID, "sceneItemEnabled": plan.AnchorEnabled.ValueBool()})
@@ -256,18 +265,18 @@ func (r *inputResource) Update(ctx context.Context, req resource.UpdateRequest, 
 			if plan.AnchorTransform == nil {
 				return fmt.Errorf("anchor_transform is required")
 			}
-			if err := setItem(ctx, cl, plan.Collection.ValueString(), scene.Name, id, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform); err != nil {
+			if err := setItem(ctx, cl, plan.Collection.ValueString(), scene.Name, id, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform); err != nil {
 				return err
 			}
 		} else if plan.AnchorTransform == nil {
 			return fmt.Errorf("anchor_transform is required")
-		} else if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform); err != nil {
+		} else if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform); err != nil {
 			return err
 		}
-		if _, err := waitInputExpected(ctx, cl, in.UUID, plan.Name.ValueString(), plan.Kind.ValueString(), plan.File.ValueString(), plan.Unload.ValueBool(), 40, 100*time.Millisecond); err != nil {
+		if _, err := waitInputExpected(ctx, cl, in.UUID, plan.Name.ValueString(), plan.Kind.ValueString(), plan.File.ValueString(), plan.Unload.ValueBool(), postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform, 40, 100*time.Millisecond); err != nil {
+		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		plan.InputUUID = state.InputUUID
@@ -289,49 +298,7 @@ func (r *inputResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 		return
 	}
 	err := r.client.withKeyed(ctx, []string{m.AnchorSceneUUID.ValueString()}, func(cl requester) error {
-		if _, err := ensureCollection(ctx, cl, m.Collection.ValueString()); err != nil {
-			return err
-		}
-		in, ok, err := inputByUUID(ctx, cl, m.InputUUID.ValueString())
-		if err != nil || !ok {
-			return err
-		}
-		allScenes, err := scenes(ctx, cl)
-		if err != nil {
-			return err
-		}
-		var extras []string
-		for _, s := range allScenes {
-			items, err := sceneItems(ctx, cl, s.Name)
-			if err != nil {
-				return err
-			}
-			for _, it := range items {
-				if it.SourceUUID == in.UUID && !(s.UUID == m.AnchorSceneUUID.ValueString() && it.ItemID == m.AnchorItemID.ValueInt64()) {
-					extras = append(extras, fmt.Sprintf("%s/%d", s.Name, it.ItemID))
-				}
-			}
-		}
-		if len(extras) > 0 {
-			return fmt.Errorf("refusing input destruction before mutation: extra source references %v", extras)
-		}
-		scene, ok, err := sceneByUUID(ctx, cl, m.AnchorSceneUUID.ValueString())
-		if err != nil {
-			return err
-		}
-		if ok {
-			if it, exists, err := itemByID(ctx, cl, scene.Name, m.AnchorItemID.ValueInt64()); err != nil {
-				return err
-			} else if exists {
-				if it.SourceUUID != in.UUID {
-					return fmt.Errorf("anchor item rebound; refusing deletion")
-				}
-				if _, err := mutation(ctx, cl, m.Collection.ValueString(), "RemoveSceneItem", map[string]any{"sceneUuid": scene.UUID, "sceneItemId": it.ItemID}); err != nil {
-					return err
-				}
-			}
-		}
-		return waitUntil(ctx, func() (bool, error) { _, exists, e := inputByUUID(ctx, cl, in.UUID); return !exists, e })
+		return deleteAnchoredInput(ctx, cl, m.Collection.ValueString(), m.InputUUID.ValueString(), m.AnchorSceneUUID.ValueString(), m.AnchorItemID.ValueInt64())
 	})
 	if err != nil {
 		resp.Diagnostics.AddError("Delete OBS input failed", err.Error())

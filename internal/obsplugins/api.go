@@ -1,6 +1,7 @@
 package obsplugins
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 )
 
 // Spec is one pinned plugin bundle. All files and executable modes are pinned.
@@ -20,35 +20,54 @@ type Receipt = receipt
 // Load reads and validates an explicitly pinned manifest. Relative sources resolve
 // against the returned absolute manifest directory, not the caller's cwd.
 func Load(path, expectedSHA256, id string) (Spec, string, error) {
-	b, e := os.ReadFile(path)
+	m, dir, e := loadManifest(path, expectedSHA256)
 	if e != nil {
 		return Spec{}, "", e
 	}
+	p, e := m.find(id)
+	if e != nil {
+		return Spec{}, "", e
+	}
+	return p, dir, nil
+}
+
+// loadManifest reads, optionally checksums, decodes, validates and host-checks a
+// manifest, returning it with the directory it lives in (relative sources resolve there).
+func loadManifest(path, expectedSHA256 string) (manifest, string, error) {
+	b, e := os.ReadFile(path)
+	if e != nil {
+		return manifest{}, "", e
+	}
 	if expectedSHA256 != "" && sum(b) != expectedSHA256 {
-		return Spec{}, "", fmt.Errorf("manifest checksum mismatch")
+		return manifest{}, "", fmt.Errorf("manifest checksum mismatch")
 	}
 	var m manifest
-	d := json.NewDecoder(strings.NewReader(string(b)))
+	d := json.NewDecoder(bytes.NewReader(b))
 	d.DisallowUnknownFields()
 	if e = d.Decode(&m); e != nil {
-		return Spec{}, "", e
+		return manifest{}, "", e
 	}
 	if e = validate(m); e != nil {
-		return Spec{}, "", e
+		return manifest{}, "", e
 	}
 	if runtime.GOOS != m.OS || runtime.GOARCH != m.Arch {
-		return Spec{}, "", fmt.Errorf("unsupported host %s/%s", runtime.GOOS, runtime.GOARCH)
+		return manifest{}, "", fmt.Errorf("unsupported host %s/%s, manifest is for %s/%s", runtime.GOOS, runtime.GOARCH, m.OS, m.Arch)
 	}
 	abs, e := filepath.Abs(path)
 	if e != nil {
-		return Spec{}, "", e
+		return manifest{}, "", e
 	}
+	return m, filepath.Dir(abs), nil
+}
+
+// find returns the first plugin entry with the given ID.
+func (m manifest) find(id string) (plugin, error) {
 	for _, p := range m.Plugins {
 		if p.ID == id {
-			return p, filepath.Dir(abs), nil
+			return p, nil
 		}
 	}
-	return Spec{}, "", fmt.Errorf("unknown plugin ID %q", id)
+	return plugin{}, fmt.Errorf("unknown plugin ID %q", id)
 }
 
 // Inspect is read-only and can run while OBS is running. Status is matching,

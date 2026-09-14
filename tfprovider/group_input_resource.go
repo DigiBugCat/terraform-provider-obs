@@ -107,35 +107,26 @@ func (r *groupInputResource) Create(ctx context.Context, req resource.CreateRequ
 			"inputName": m.Name.ValueString(), "inputKind": m.Kind.ValueString(),
 			"inputSettings": map[string]any{"file": m.File.ValueString(), "unload": m.Unload.ValueBool()}, "placement": placement,
 		})
-		var child bridgeChildObservation
-		childErr := fmt.Errorf("bridge result is not trusted because the envelope was invalid")
-		if callErr == nil || isAuthoritativeNativeInterruption(callErr) {
-			child, childErr = bridgeChildFromResult(envelope.Result)
-		}
-		if childErr == nil {
+		child, trusted, err := bridgeOutcome("CreateInputInGroup", envelope, callErr, bridgeChildFromResult)
+		if trusted {
 			m.InputUUID, m.ItemID = types.StringValue(child.UUID), types.Int64Value(child.ItemID)
 			m.ID = types.StringValue(groupInputID(m.Collection.ValueString(), m.SceneUUID.ValueString(), m.GroupUUID.ValueString(), child.UUID, child.ItemID))
 			m.SourceWidth, m.SourceHeight = types.Int64Value(child.Width), types.Int64Value(child.Height)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 		}
-		if callErr != nil {
-			return callErr
-		}
-		if envelope.Outcome != "completed" {
-			return fmt.Errorf("bridge CreateInputInGroup %s (%s): %s; re-observe before retry", envelope.Outcome, envelope.Code, envelope.Message)
-		}
-		if childErr != nil {
-			return childErr
+		if err != nil {
+			return err
 		}
 		if child.Name != m.Name.ValueString() || child.Kind != m.Kind.ValueString() || bridgePlacementDifference(child.Placement, *mm.Placement) != "" {
 			return fmt.Errorf("bridge group input returned mismatched identity/placement")
 		}
-		settled, err := waitBridgeChild(ctx, cl, m, 40, 100*time.Millisecond)
+		mm, mm.Placement = m, &clamped
+		settled, err := waitBridgeChild(ctx, cl, mm, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}
 		m.SourceWidth, m.SourceHeight = types.Int64Value(settled.Width), types.Int64Value(settled.Height)
-		_, err = waitInputExpected(ctx, cl, child.UUID, m.Name.ValueString(), m.Kind.ValueString(), m.File.ValueString(), m.Unload.ValueBool(), 40, 100*time.Millisecond)
+		_, err = waitInputExpected(ctx, cl, child.UUID, m.Name.ValueString(), m.Kind.ValueString(), m.File.ValueString(), m.Unload.ValueBool(), postconditionAttempts, postconditionDelay)
 		return err
 	})
 	if err != nil {
@@ -255,44 +246,44 @@ func (r *groupInputResource) Update(ctx context.Context, req resource.UpdateRequ
 		}
 		itemID := state.ItemID.ValueInt64()
 		var observedPlacement bridgePlacementModel
+		children, err := containerItemCount(ctx, cl, plan.GroupName.ValueString(), true)
+		if err != nil {
+			return err
+		}
+		// target is the placement OBS can honour now; state keeps the declared index.
+		target := *plan.Placement
+		target.Index = types.Int64Value(clampCreateIndex(plan.Placement.Index.ValueInt64(), children-1))
+		if !exists {
+			target.Index = types.Int64Value(clampCreateIndex(plan.Placement.Index.ValueInt64(), children))
+		}
 		if !exists {
 			for _, other := range group.Children {
 				if other.UUID == in.UUID {
 					return fmt.Errorf("same source already has different group item %d; refusing logical adoption", other.ItemID)
 				}
 			}
-			placement, _ := plan.Placement.request()
+			placement, _ := target.request()
 			opID := bridgeOperationID("repair-group-input", plan.Name.ValueString())
 			envelope, callErr := bridgeMutation(ctx, cl, plan.Collection.ValueString(), "AddSourceToGroup", opID, map[string]any{
 				"scene":  bridgeIdentity(plan.SceneUUID.ValueString(), plan.SceneName.ValueString(), 0),
 				"group":  bridgeIdentity(plan.GroupUUID.ValueString(), plan.GroupName.ValueString(), plan.GroupItemID.ValueInt64()),
 				"source": bridgeIdentity(in.UUID, in.Name, 0), "placement": placement,
 			})
-			var created bridgeChildObservation
-			createdErr := fmt.Errorf("bridge result is not trusted because the envelope was invalid")
-			if callErr == nil || isAuthoritativeNativeInterruption(callErr) {
-				created, createdErr = bridgeChildFromResult(envelope.Result)
-			}
-			if createdErr == nil {
+			created, trusted, err := bridgeOutcome("AddSourceToGroup", envelope, callErr, bridgeChildFromResult)
+			if trusted {
 				itemID = created.ItemID
 				plan.ItemID = types.Int64Value(itemID)
 				plan.ID = types.StringValue(groupInputID(plan.Collection.ValueString(), plan.SceneUUID.ValueString(), plan.GroupUUID.ValueString(), in.UUID, itemID))
 				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 			}
-			if callErr != nil {
-				return callErr
-			}
-			if envelope.Outcome != "completed" {
-				return fmt.Errorf("bridge AddSourceToGroup %s (%s): %s; re-observe before retry", envelope.Outcome, envelope.Code, envelope.Message)
-			}
-			if createdErr != nil {
-				return createdErr
+			if err != nil {
+				return err
 			}
 			observedPlacement = created.Placement
 		} else {
 			observedPlacement = child.Placement
 		}
-		if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), plan.GroupName.ValueString(), itemID, observedPlacement, plan.Placement); err != nil {
+		if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), plan.GroupName.ValueString(), itemID, observedPlacement, &target); err != nil {
 			return err
 		}
 		if in.File != plan.File.ValueString() || in.Unload != plan.Unload.ValueBool() {
@@ -303,12 +294,14 @@ func (r *groupInputResource) Update(ctx context.Context, req resource.UpdateRequ
 		plan.InputUUID = state.InputUUID
 		plan.ItemID = types.Int64Value(itemID)
 		plan.ID = types.StringValue(groupInputID(plan.Collection.ValueString(), plan.SceneUUID.ValueString(), plan.GroupUUID.ValueString(), in.UUID, itemID))
-		settled, err := waitBridgeChild(ctx, cl, plan, 40, 100*time.Millisecond)
+		verify := plan
+		verify.Placement = &target
+		settled, err := waitBridgeChild(ctx, cl, verify, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}
 		plan.SourceWidth, plan.SourceHeight = types.Int64Value(settled.Width), types.Int64Value(settled.Height)
-		_, err = waitInputExpected(ctx, cl, in.UUID, plan.Name.ValueString(), plan.Kind.ValueString(), plan.File.ValueString(), plan.Unload.ValueBool(), 40, 100*time.Millisecond)
+		_, err = waitInputExpected(ctx, cl, in.UUID, plan.Name.ValueString(), plan.Kind.ValueString(), plan.File.ValueString(), plan.Unload.ValueBool(), postconditionAttempts, postconditionDelay)
 		return err
 	})
 	if err != nil {
@@ -389,6 +382,10 @@ func (r *groupInputResource) ImportState(ctx context.Context, req resource.Impor
 	parts := strings.Split(req.ID, "|")
 	if len(parts) != 6 {
 		resp.Diagnostics.AddError("Invalid group input import ID", "use collection|scene_uuid|group_uuid|group_item_id|input_uuid|item_id")
+		return
+	}
+	if parts[0] == "" || parts[1] == "" || parts[2] == "" || parts[4] == "" {
+		resp.Diagnostics.AddError("Invalid group input import ID", "collection and UUIDs must not be empty")
 		return
 	}
 	groupItemID, err1 := strconv.ParseInt(parts[3], 10, 64)

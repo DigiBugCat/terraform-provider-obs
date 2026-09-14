@@ -3,12 +3,12 @@ package tfprovider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -62,27 +62,25 @@ func TestFilterParentDeletionRefreshAndDelete(t *testing.T) {
 			t.Run(kind+"/"+scenario, func(t *testing.T) {
 				f := &deletedFilterParentFake{scenario: scenario}
 				var r resource.Resource
-				if kind == "color" {
-					r = &colorFilterResource{client: &client{testRequester: f}}
-				} else {
-					g := &genericFilterResource{client: &client{testRequester: f}}
-					if kind == "typed" {
-						// Move uses this shared typed filter lifecycle.
-						g.spec = &FilterSpec{TypeSuffix: "_typed", Kind: "plugin_filter", Settings: map[string]FilterSettingType{"gain": FilterFloat64}}
-					}
-					r = g
+				g := &genericFilterResource{client: &client{testRequester: f}}
+				switch kind {
+				case "typed":
+					// Typed filter resources (move_filters.go, obs_color_filter) share this lifecycle.
+					g.spec = &FilterSpec{TypeSuffix: "_typed", Kind: "plugin_filter", Settings: map[string]FilterSettingType{"gain": FilterFloat64}}
+				case "color":
+					spec := colorFilterSpec()
+					g.spec = &spec
 				}
+				r = g
 				var sc resource.SchemaResponse
 				r.Schema(ctx, resource.SchemaRequest{}, &sc)
 				state := tfsdk.State{Schema: sc.Schema, Raw: tftypes.NewValue(sc.Schema.Type().TerraformType(ctx), nil)}
 				m := genericTestModel()
+				if kind == "color" {
+					m.SettingsJSON = types.StringValue(`{"hue_shift":0,"opacity":1}`)
+				}
 				if g, ok := r.(*genericFilterResource); ok {
 					if d := g.writeModel(ctx, &state, &m); d.HasError() {
-						t.Fatal(d)
-					}
-				} else {
-					m := colorFilterModel{ID: m.ID, Collection: m.Collection, ParentName: m.ParentName, ParentUUID: m.ParentUUID, Name: m.Name, Kind: types.StringValue("color_filter_v2"), HueShift: types.Float64Value(0), Opacity: types.Float64Value(1), Enabled: m.Enabled, Index: m.Index}
-					if d := state.Set(ctx, &m); d.HasError() {
 						t.Fatal(d)
 					}
 				}

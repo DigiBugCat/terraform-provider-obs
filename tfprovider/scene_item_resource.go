@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -39,7 +38,7 @@ func (r *sceneItemResource) Schema(_ context.Context, _ resource.SchemaRequest, 
 }
 
 func (r *sceneItemResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var m groupAwareSceneItemModel
+	var m sceneItemModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &m)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -100,7 +99,7 @@ func (r *sceneItemResource) Create(ctx context.Context, req resource.CreateReque
 		if err := setItem(ctx, cl, m.Collection.ValueString(), scene.Name, id, m.Enabled.ValueBool(), index, *m.Transform); err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, id, m.SourceUUID.ValueString(), m.Enabled.ValueBool(), index, *m.Transform, 40, 100*time.Millisecond); err != nil {
+		if _, err := waitItemExpected(ctx, cl, scene.Name, id, m.SourceUUID.ValueString(), m.Enabled.ValueBool(), index, *m.Transform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		return nil
@@ -113,7 +112,7 @@ func (r *sceneItemResource) Create(ctx context.Context, req resource.CreateReque
 }
 
 func (r *sceneItemResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var m groupAwareSceneItemModel
+	var m sceneItemModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &m)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -163,7 +162,7 @@ func (r *sceneItemResource) Read(ctx context.Context, req resource.ReadRequest, 
 }
 
 func (r *sceneItemResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var plan, state groupAwareSceneItemModel
+	var plan, state sceneItemModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
 	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
 	if resp.Diagnostics.HasError() {
@@ -195,10 +194,15 @@ func (r *sceneItemResource) Update(ctx context.Context, req resource.UpdateReque
 		if plan.Transform == nil {
 			return fmt.Errorf("transform is required")
 		}
-		if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.Enabled.ValueBool(), plan.Index.ValueInt64(), *plan.Transform); err != nil {
+		siblings, err := containerItemCount(ctx, cl, scene.Name, false)
+		if err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, it.ItemID, plan.SourceUUID.ValueString(), plan.Enabled.ValueBool(), plan.Index.ValueInt64(), *plan.Transform, 40, 100*time.Millisecond); err != nil {
+		index := clampCreateIndex(plan.Index.ValueInt64(), siblings-1)
+		if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.Enabled.ValueBool(), index, *plan.Transform); err != nil {
+			return err
+		}
+		if _, err := waitItemExpected(ctx, cl, scene.Name, it.ItemID, plan.SourceUUID.ValueString(), plan.Enabled.ValueBool(), index, *plan.Transform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		plan.ItemID = state.ItemID
@@ -213,7 +217,7 @@ func (r *sceneItemResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *sceneItemResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var m groupAwareSceneItemModel
+	var m sceneItemModel
 	resp.Diagnostics.Append(req.State.Get(ctx, &m)...)
 	if resp.Diagnostics.HasError() {
 		return

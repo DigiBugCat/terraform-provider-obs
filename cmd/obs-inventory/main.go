@@ -38,16 +38,8 @@ func main() {
 		return x
 	}
 	names := func(x map[string]any, list, key string) (all, hit []string) {
-		arr, _ := x[list].([]any)
-		for _, v := range arr {
-			var n string
-			switch t := v.(type) {
-			case map[string]any:
-				n, _ = t[key].(string)
-			case string:
-				n = t
-			}
-			all = append(all, n)
+		all = ws.ListNames(x, list, key)
+		for _, n := range all {
 			if strings.HasPrefix(n, prefix) {
 				hit = append(hit, n)
 			}
@@ -58,15 +50,15 @@ func main() {
 	_, groups := names(req("GetGroupList", nil), "groups", "")
 	allInputs, inputs := names(req("GetInputList", nil), "inputs", "inputName")
 	filters := 0
-	for _, src := range append(append([]string{}, allScenes...), allInputs...) {
+	for _, src := range append(append([]string{}, scenes...), inputs...) {
 		x, e := c.Req(ctx, "GetSourceFilterList", map[string]any{"sourceName": src})
 		if e != nil {
 			continue
 		}
-		if fl, _ := x["filters"].([]any); len(fl) > 0 && strings.HasPrefix(src, prefix) {
-			filters += len(fl)
-		}
+		fl, _ := x["filters"].([]any)
+		filters += len(fl)
 	}
+	_, _ = allScenes, allInputs
 	fmt.Printf("prefix %q: scenes=%d groups=%d inputs=%d filters-on-managed-sources=%d\n", prefix, len(scenes), len(groups), len(inputs), filters)
 	for _, n := range scenes {
 		fmt.Println("  scene ", n)

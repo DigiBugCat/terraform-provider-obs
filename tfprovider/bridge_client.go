@@ -8,7 +8,15 @@ import (
 )
 
 const bridgeContractVersion int64 = 1
-const bridgeSupportedVersion = "0.1.3"
+
+// The OBS build the bridge contract and the absolute-coordinate preflight are qualified
+// against. Bumping OBS means re-qualifying both, so the values live in one place.
+const (
+	qualifiedOBSVersion  = "32.2.2"
+	qualifiedWSVersion   = "5.7.4"
+	requiredCanvasWidth  = 1920
+	requiredCanvasHeight = 1080
+)
 
 func supportedBridgeVersion(version string) bool {
 	return version == "0.1.3" || version == "0.1.4"
@@ -99,23 +107,17 @@ func bridgeMutation(ctx context.Context, cl requester, collection, requestType, 
 	}
 	requestData := bridgeRequestData(data, operationID)
 	outerData := map[string]any{"vendorName": "obstf", "requestType": requestType, "requestData": requestData}
-	guard, guardErr := mutationPreflight(ctx, cl, collection, "CallVendorRequest")
+	guard, guardErr := scopedPreflight(ctx, cl, collection, "CallVendorRequest")
 	entry := map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": "CallVendorRequest/obstf:" + requestType, "transport_request_type": "CallVendorRequest", "request_data": outerData, "preflight": guard, "native_sent": false}
 	if guardErr != nil {
 		entry["status"], entry["error"] = "refused", guardErr.Error()
-		if traceErr := recordTrace(entry); traceErr != nil {
-			return bridgeEnvelope{}, fmt.Errorf("%w; refusal receipt write also failed: %v", guardErr, traceErr)
-		}
-		return bridgeEnvelope{}, guardErr
+		return bridgeEnvelope{}, recordReceipt(entry, guardErr)
 	}
 	outer, transportErr := request(ctx, cl, "CallVendorRequest", outerData)
 	entry["native_sent"], entry["outer_response"] = true, outer
 	if transportErr != nil {
 		entry["status"], entry["error"] = "failed-or-uncertain", transportErr.Error()
-		if traceErr := recordTrace(entry); traceErr != nil {
-			return bridgeEnvelope{}, fmt.Errorf("%w; receipt write also failed: %v", transportErr, traceErr)
-		}
-		return bridgeEnvelope{}, transportErr
+		return bridgeEnvelope{}, recordReceipt(entry, transportErr)
 	}
 	e, parseErr := parseBridgeEnvelope(outer, requestType, operationID)
 	entry["bridge_envelope"] = map[string]any{"request_type": requestType, "client_operation_id": operationID, "outcome": e.Outcome, "code": e.Code, "message": e.Message, "mutation_attempted": e.MutationAttempted, "postcondition_verified": e.PostconditionVerified, "bridge_version": e.BridgeVersion, "result": e.Result}
@@ -144,13 +146,32 @@ func bridgeMutation(ctx context.Context, cl requester, collection, requestType, 
 	return e, parseErr
 }
 
+// bridgeOutcome folds a bridge mutation's transport error, envelope outcome and result
+// parsing into one verdict. trusted is true only for a completed envelope whose result
+// parsed, the only state that may seed identity into Terraform state; err is what the
+// caller returns: nil, the outcome or parse error, or the injected interruption after a
+// completed write (which callers must still surface after checkpointing).
+func bridgeOutcome[T any](requestType string, envelope bridgeEnvelope, callErr error, parse func(map[string]any) (T, error)) (result T, trusted bool, err error) {
+	if callErr != nil && !isAuthoritativeNativeInterruption(callErr) {
+		return result, false, callErr
+	}
+	if envelope.Outcome != "completed" {
+		return result, false, fmt.Errorf("bridge %s %s (%s): %s; re-observe before retry", requestType, envelope.Outcome, envelope.Code, envelope.Message)
+	}
+	result, parseErr := parse(envelope.Result)
+	if parseErr != nil {
+		return result, false, parseErr
+	}
+	return result, true, callErr
+}
+
 func bridgeCapabilities(ctx context.Context, cl requester, collection, requiredRequest string, requireAbsoluteMutation bool) (bridgeEnvelope, error) {
 	ordinary, err := request(ctx, cl, "GetVersion", nil)
 	if err != nil {
 		return bridgeEnvelope{}, err
 	}
 	rpc, rpcOK := integerNumber(ordinary["rpcVersion"])
-	if stringValue(ordinary["obsVersion"]) != "32.2.2" || stringValue(ordinary["obsWebSocketVersion"]) != "5.7.4" || !rpcOK || rpc != 1 {
+	if stringValue(ordinary["obsVersion"]) != qualifiedOBSVersion || stringValue(ordinary["obsWebSocketVersion"]) != qualifiedWSVersion || !rpcOK || rpc != 1 {
 		return bridgeEnvelope{}, fmt.Errorf("ordinary obs-websocket version identity mismatch")
 	}
 	callVendorAvailable := false
@@ -177,10 +198,27 @@ func bridgeCapabilities(ctx context.Context, cl requester, collection, requiredR
 	coordinateModeKnown, cmok := result["coordinateModeKnown"].(bool)
 	absoluteCoordinates, acok := result["absoluteCoordinates"].(bool)
 	mainCanvasKnown, mcok := result["mainCanvasKnown"].(bool)
-	if stringValue(result["vendorName"]) != "obstf" || !cok || contract != bridgeContractVersion || !supportedBridgeVersion(stringValue(result["bridgeVersion"])) ||
-		stringValue(result["currentSceneCollectionName"]) != collection || stringValue(result["obsVersion"]) != "32.2.2" || !aok || api != 3 ||
-		stringValue(result["platform"]) == "" || stringValue(result["architecture"]) == "" || !boolValue(result["outputStateObserved"]) || !bwok || !bhok || !cmok || !acok || !mcok {
-		return e, fmt.Errorf("bridge capability identity/safety mismatch")
+	// Checked one field at a time so a bridge upgrade or a wrong collection names the
+	// field that disagreed instead of one opaque mismatch.
+	switch {
+	case stringValue(result["vendorName"]) != "obstf":
+		return e, fmt.Errorf("bridge capability vendorName=%q, want obstf", stringValue(result["vendorName"]))
+	case !cok || contract != bridgeContractVersion:
+		return e, fmt.Errorf("bridge capability contractVersion=%v, want %d", result["contractVersion"], bridgeContractVersion)
+	case !supportedBridgeVersion(stringValue(result["bridgeVersion"])):
+		return e, fmt.Errorf("bridge capability bridgeVersion=%q is not a supported bridge", stringValue(result["bridgeVersion"]))
+	case stringValue(result["currentSceneCollectionName"]) != collection:
+		return e, fmt.Errorf("bridge capability currentSceneCollectionName=%q, want %q", stringValue(result["currentSceneCollectionName"]), collection)
+	case stringValue(result["obsVersion"]) != qualifiedOBSVersion:
+		return e, fmt.Errorf("bridge capability obsVersion=%q, want %s", stringValue(result["obsVersion"]), qualifiedOBSVersion)
+	case !aok || api != 3:
+		return e, fmt.Errorf("bridge capability apiVersion=%v, want 3", result["apiVersion"])
+	case stringValue(result["platform"]) == "" || stringValue(result["architecture"]) == "":
+		return e, fmt.Errorf("bridge capability omitted platform or architecture")
+	case !boolValue(result["outputStateObserved"]):
+		return e, fmt.Errorf("bridge capability did not observe output state")
+	case !bwok || !bhok || !cmok || !acok || !mcok:
+		return e, fmt.Errorf("bridge capability omitted canvas or coordinate-mode fields")
 	}
 	for _, key := range []string{"streamingActive", "recordingActive", "replayBufferActive", "virtualCameraActive"} {
 		value, ok := result[key].(bool)
@@ -200,7 +238,7 @@ func bridgeCapabilities(ctx context.Context, cl requester, collection, requiredR
 	guardHeight, ghok := integerNumber(guard["baseHeight"])
 	guardStatus := stringValue(guard["status"])
 	guardComparison := stringValue(guard["comparisonMode"])
-	if !gsok || !gcok || !gaok || !gmok || !gwok || !ghok || stringValue(guard["obsVersion"]) != "32.2.2" ||
+	if !gsok || !gcok || !gaok || !gmok || !gwok || !ghok || stringValue(guard["obsVersion"]) != qualifiedOBSVersion ||
 		guardCoordinateKnown != coordinateModeKnown || guardAbsolute != absoluteCoordinates || guardCanvasKnown != mainCanvasKnown ||
 		guardWidth != baseWidth || guardHeight != baseHeight {
 		return e, fmt.Errorf("bridge absolute runtime guard is malformed or disagrees with capability fields")

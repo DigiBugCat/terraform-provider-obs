@@ -21,7 +21,7 @@ func groupGraphTestAsset(t *testing.T, name string) string {
 }
 
 func groupGraphTestPlacement(x float64, index int64) bridgePlacementModel {
-	p := lunaLifecyclePlacement()
+	p := groupFixturePlacement()
 	p.Transform.X = types.Float64Value(x)
 	p.Index = types.Int64Value(index)
 	return p
@@ -39,10 +39,10 @@ func groupGraphTestChild(key, name, file, uuid string, itemID int64, x float64, 
 func groupGraphTestModel(leftFile, rightFile string) groupGraphModel {
 	parent := groupGraphTestPlacement(0, 0)
 	return groupGraphModel{
-		ID:         types.StringValue(groupGraphID(lunaLifecycleCollection, lunaLifecycleSceneUUID, lunaLifecycleGroupUUID)),
-		Collection: types.StringValue(lunaLifecycleCollection), SceneName: types.StringValue(lunaLifecycleSceneName), SceneUUID: types.StringValue(lunaLifecycleSceneUUID),
-		Name: types.StringValue(lunaLifecycleGroupName), ParentPresent: types.BoolValue(true), ParentPlacement: &parent,
-		GroupUUID: types.StringValue(lunaLifecycleGroupUUID), ParentItemID: types.Int64Value(7),
+		ID:         types.StringValue(groupGraphID(groupFixtureCollection, groupFixtureSceneUUID, groupFixtureGroupUUID)),
+		Collection: types.StringValue(groupFixtureCollection), SceneName: types.StringValue(groupFixtureSceneName), SceneUUID: types.StringValue(groupFixtureSceneUUID),
+		Name: types.StringValue(groupFixtureGroupName), ParentPresent: types.BoolValue(true), ParentPlacement: &parent,
+		GroupUUID: types.StringValue(groupFixtureGroupUUID), ParentItemID: types.Int64Value(7),
 		Children: []groupGraphChildModel{
 			groupGraphTestChild("left", "Party Light Left", leftFile, "input-left", 1, 0, 0, true),
 			groupGraphTestChild("right", "Party Light Right", rightFile, "input-right", 2, 960, 1, true),
@@ -84,7 +84,7 @@ func TestGroupGraphPlanDecodesWhollyUnknownComputedObservations(t *testing.T) {
 		desired.Children[i].SourceUUID, desired.Children[i].ItemID = types.StringUnknown(), types.Int64Unknown()
 	}
 
-	plan := lunaLifecycleSchemaAndPlan(t, ctx, groupGraphSchema(), groupGraphUnknownObservationPlanModel(t, desired))
+	plan := groupFixtureSchemaAndPlan(t, ctx, groupGraphSchema(), groupGraphUnknownObservationPlanModel(t, desired))
 	var legacy groupGraphModel
 	if diags := plan.Get(ctx, &legacy); !diags.HasError() {
 		t.Fatal("legacy pointer/slice model unexpectedly decoded wholly unknown computed observations")
@@ -110,9 +110,9 @@ func TestGroupGraphModifyPlanMarksOnlyRepairIdentityTurnoverUnknown(t *testing.T
 	state.ObservedComplete = types.BoolValue(false)
 	planModel := groupGraphTestModel(left, right)
 	sc := groupGraphSchema()
-	plan := lunaLifecycleSchemaAndPlan(t, ctx, sc, planModel)
+	plan := groupFixtureSchemaAndPlan(t, ctx, sc, planModel)
 	response := resource.ModifyPlanResponse{Plan: plan}
-	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, state), Plan: plan}, &response)
+	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: groupFixtureSchemaAndState(t, ctx, sc, state), Plan: plan}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("modify plan diagnostics: %v", response.Diagnostics)
 	}
@@ -133,7 +133,7 @@ func TestGroupGraphModifyPlanMarksOnlyRepairIdentityTurnoverUnknown(t *testing.T
 	parentAbsent := state
 	parentAbsent.ParentPresent = types.BoolValue(false)
 	parentResponse := resource.ModifyPlanResponse{Plan: plan}
-	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, parentAbsent), Plan: plan}, &parentResponse)
+	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: groupFixtureSchemaAndState(t, ctx, sc, parentAbsent), Plan: plan}, &parentResponse)
 	if parentResponse.Diagnostics.HasError() {
 		t.Fatalf("parent repair modify plan diagnostics: %v", parentResponse.Diagnostics)
 	}
@@ -148,9 +148,9 @@ func TestGroupGraphModifyPlanMarksOnlyRepairIdentityTurnoverUnknown(t *testing.T
 	reordered.Children = []groupGraphChildModel{planModel.Children[1], planModel.Children[0]}
 	reordered.Children[0].Placement = placementPointer(groupGraphTestPlacement(960, 0))
 	reordered.Children[1].Placement = placementPointer(groupGraphTestPlacement(0, 1))
-	reorderedPlan := lunaLifecycleSchemaAndPlan(t, ctx, sc, reordered)
+	reorderedPlan := groupFixtureSchemaAndPlan(t, ctx, sc, reordered)
 	reorderedResponse := resource.ModifyPlanResponse{Plan: reorderedPlan}
-	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: lunaLifecycleSchemaAndState(t, ctx, sc, planModel), Plan: reorderedPlan}, &reorderedResponse)
+	(&groupGraphResource{}).ModifyPlan(ctx, resource.ModifyPlanRequest{State: groupFixtureSchemaAndState(t, ctx, sc, planModel), Plan: reorderedPlan}, &reorderedResponse)
 	if reorderedResponse.Diagnostics.HasError() {
 		t.Fatalf("reorder modify plan diagnostics: %v", reorderedResponse.Diagnostics)
 	}
@@ -251,14 +251,14 @@ func TestGroupGraphExactBoundsRequireSupportedZeroAnchor(t *testing.T) {
 func TestGroupGraphImportParsesExactOrderedBindings(t *testing.T) {
 	ctx := context.Background()
 	sc := groupGraphSchema()
-	response := resource.ImportStateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc, groupGraphModel{})}
+	response := resource.ImportStateResponse{State: groupFixtureSchemaAndState(t, ctx, sc, groupGraphModel{})}
 	r := &groupGraphResource{}
 	r.ImportState(ctx, resource.ImportStateRequest{ID: "Lab|scene-1|group-1|7|left=input-left:11,right=input-right:12"}, &response)
 	if response.Diagnostics.HasError() {
 		t.Fatalf("import diagnostics: %v", response.Diagnostics)
 	}
 	var got groupGraphModel
-	lunaLifecycleRequireState(t, ctx, response.State, &got)
+	groupFixtureRequireState(t, ctx, response.State, &got)
 	if got.ID.ValueString() != "Lab|scene-1|group-1" || got.ParentItemID.ValueInt64() != 7 || len(got.Children) != 2 || got.Children[0].StableKey.ValueString() != "left" || got.Children[1].SourceUUID.ValueString() != "input-right" {
 		t.Fatalf("imported state=%#v", got)
 	}

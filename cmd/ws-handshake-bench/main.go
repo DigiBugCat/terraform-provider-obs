@@ -2,7 +2,7 @@
 // provider could use. Sends only Get* requests; never mutates OBS and never prints
 // credentials.
 //
-//	A  dial-per-call        what tfprovider client.with() does today (1 request each)
+//	A  dial-per-call        the pre-pool baseline; the provider now pools (tfprovider/client.go)
 //	B  persistent, serial   one connection, N sequential requests
 //	C  persistent, batch    one connection, one RequestBatch of N
 //	D  handshake only       Connect+Identify+Close, no request
@@ -40,6 +40,9 @@ func main() {
 	if len(os.Args) > 2 {
 		k = must(strconv.Atoi(os.Args[2]))
 	}
+	if k > n {
+		k = n
+	}
 	cfg, path, err := ws.DiscoverConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "discover:", err)
@@ -69,7 +72,7 @@ func main() {
 	fmt.Printf("scene=%q items=%d\n", scene, most)
 	per := func(d time.Duration) time.Duration { return d / time.Duration(n) }
 
-	// A: dial per call (current provider behaviour).
+	// A: dial per call (the pre-pool baseline).
 	t := time.Now()
 	for i := 0; i < n; i++ {
 		c := must(ws.Connect(ctx, cfg))

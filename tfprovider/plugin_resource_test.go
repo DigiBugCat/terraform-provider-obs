@@ -36,14 +36,14 @@ func TestPluginFailedUpdatePreservesPriorStateAndBackup(t *testing.T) {
 	old := pluginTestModel()
 	plan := old
 	plan.Version = types.StringValue("2")
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &old)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &old)
 	resp := resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan), State: state}, &resp)
+	r.Update(ctx, resource.UpdateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan), State: state}, &resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("failure accepted")
 	}
 	var got pluginModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.Version.ValueString() != "1" || got.BackupPath.ValueString() != "prior-backup" {
 		t.Fatal("failed update changed version or backup", got)
 	}
@@ -58,14 +58,14 @@ func TestPluginReadDriftAndDestroyAreReadOnly(t *testing.T) {
 	var sc resource.SchemaResponse
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
 	m := pluginTestModel()
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)
 	resp := resource.ReadResponse{State: state}
 	r.Read(ctx, resource.ReadRequest{State: state}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatal(resp.Diagnostics)
 	}
 	var got pluginModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.Installed.ValueBool() || got.BackupPath.ValueString() != "prior-backup" {
 		t.Fatal("drift or backup lost")
 	}
@@ -86,15 +86,15 @@ func TestPluginCreateFailureAndAuthoritativeBackupReceipt(t *testing.T) {
 		r.Schema(ctx, resource.SchemaRequest{}, &sc)
 		m := pluginTestModel()
 		m.ID = types.StringUnknown()
-		plan := lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &m)
-		state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &m)
+		plan := groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &m)
+		state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &m)
 		resp := resource.CreateResponse{State: state}
 		r.Create(ctx, resource.CreateRequest{Plan: plan}, &resp)
 		if !resp.Diagnostics.HasError() {
 			t.Fatal("failed create accepted")
 		}
 		var got pluginModel
-		lunaLifecycleRequireState(t, ctx, resp.State, &got)
+		groupFixtureRequireState(t, ctx, resp.State, &got)
 		if receipt && got.BackupPath.ValueString() != "saved-old-bundle" {
 			t.Fatal("recovery receipt lost")
 		}

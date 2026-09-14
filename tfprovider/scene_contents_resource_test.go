@@ -29,7 +29,7 @@ func newSceneContentsFake(kind string, ids ...int64) *sceneContentsFake {
 		name = f.groupName
 	}
 	for i, id := range ids {
-		f.items[id] = itemObservation{SceneName: name, SourceName: "Shared source", SourceUUID: lunaLifecycleInputUUID, ItemID: id, Index: int64(i), Transform: groupItemTransform()}
+		f.items[id] = itemObservation{SceneName: name, SourceName: "Shared source", SourceUUID: groupFixtureInputUUID, ItemID: id, Index: int64(i), Transform: groupItemTransform()}
 	}
 	return f
 }
@@ -38,7 +38,7 @@ func (f *sceneContentsFake) Req(ctx context.Context, kind string, data map[strin
 		f.hook(kind, data)
 	}
 	if kind == "SetSceneItemIndex" {
-		f.calls = append(f.calls, lunaLifecycleCall{typ: kind, data: data})
+		f.calls = append(f.calls, groupFixtureCall{typ: kind, data: data})
 		id := int64Value(data["sceneItemId"])
 		it, ok := f.items[id]
 		if !ok {
@@ -79,9 +79,9 @@ func (f *sceneContentsFake) Req(ctx context.Context, kind string, data map[strin
 }
 func sceneContentsTestModel(t *testing.T, f *sceneContentsFake, kind string, ids ...int64) sceneContentsModel {
 	t.Helper()
-	name, uuid := f.sceneName, lunaLifecycleSceneUUID
+	name, uuid := f.sceneName, groupFixtureSceneUUID
 	if kind == "group" {
-		name, uuid = f.groupName, lunaLifecycleGroupUUID
+		name, uuid = f.groupName, groupFixtureGroupUUID
 	}
 	if ids == nil {
 		ids = []int64{}
@@ -90,7 +90,7 @@ func sceneContentsTestModel(t *testing.T, f *sceneContentsFake, kind string, ids
 	if d.HasError() {
 		t.Fatal(d)
 	}
-	return sceneContentsModel{ID: types.StringUnknown(), Collection: types.StringValue(lunaLifecycleCollection), SceneName: types.StringValue(name), SceneUUID: types.StringValue(uuid), ParentKind: types.StringValue(kind), ItemIDs: list, ItemSources: types.MapUnknown(types.StringType)}
+	return sceneContentsModel{ID: types.StringUnknown(), Collection: types.StringValue(groupFixtureCollection), SceneName: types.StringValue(name), SceneUUID: types.StringValue(uuid), ParentKind: types.StringValue(kind), ItemIDs: list, ItemSources: types.MapUnknown(types.StringType)}
 }
 func sceneContentsSchema() schema.Schema {
 	var resp resource.SchemaResponse
@@ -103,7 +103,7 @@ func TestSceneContentsPrunesAndReordersPlacementOnly(t *testing.T) {
 			f := newSceneContentsFake(kind, 31, 99, 32)
 			m := sceneContentsTestModel(t, f, kind, 32, 31)
 			// A placement in another container shares the source being pruned.
-			f.items[100] = itemObservation{SceneName: "Other scene", SourceName: "Shared source", SourceUUID: lunaLifecycleInputUUID, ItemID: 100, Index: 0, Transform: groupItemTransform()}
+			f.items[100] = itemObservation{SceneName: "Other scene", SourceName: "Shared source", SourceUUID: groupFixtureInputUUID, ItemID: 100, Index: 0, Transform: groupItemTransform()}
 			if err := reconcileSceneContents(context.Background(), f, &m, nil); err != nil {
 				t.Fatal(err)
 			}
@@ -197,7 +197,7 @@ func TestSceneContentsReadExposesAddedItemAndDeleteReleasesOnly(t *testing.T) {
 	if err := reconcileSceneContents(ctx, f, &m, nil); err != nil {
 		t.Fatal(err)
 	}
-	before := lunaLifecycleSchemaAndState(t, ctx, sceneContentsSchema(), m)
+	before := groupFixtureSchemaAndState(t, ctx, sceneContentsSchema(), m)
 	f.items[99] = itemObservation{SceneName: f.sceneName, SourceName: "Manual", SourceUUID: "manual-source", ItemID: 99, Index: 1, Transform: groupItemTransform()}
 	r := &sceneContentsResource{client: &client{testRequester: f}}
 	resp := resource.ReadResponse{State: before}
@@ -214,7 +214,7 @@ func TestSceneContentsReadExposesAddedItemAndDeleteReleasesOnly(t *testing.T) {
 		t.Fatalf("refresh hid drift: %v %v", ids, err)
 	}
 	update := resource.UpdateResponse{State: resp.State}
-	r.Update(ctx, resource.UpdateRequest{State: resp.State, Plan: lunaLifecycleSchemaAndPlan(t, ctx, sceneContentsSchema(), m)}, &update)
+	r.Update(ctx, resource.UpdateRequest{State: resp.State, Plan: groupFixtureSchemaAndPlan(t, ctx, sceneContentsSchema(), m)}, &update)
 	if update.Diagnostics.HasError() {
 		t.Fatal(update.Diagnostics)
 	}
@@ -235,7 +235,7 @@ func TestSceneContentsReadMissingContainerRemovesResource(t *testing.T) {
 	if err := reconcileSceneContents(ctx, f, &m, nil); err != nil {
 		t.Fatal(err)
 	}
-	state := lunaLifecycleSchemaAndState(t, ctx, sceneContentsSchema(), m)
+	state := groupFixtureSchemaAndState(t, ctx, sceneContentsSchema(), m)
 	f.groupExists = false
 	f.items = map[int64]itemObservation{}
 	resp := resource.ReadResponse{State: state}

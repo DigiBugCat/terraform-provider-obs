@@ -172,23 +172,17 @@ func (c *client) acquire(ctx context.Context) (*ws.Client, error) {
 	return cl, nil
 }
 
-// release returns the connection to the pool unless the call failed below the request
-// level (dial, socket, or a cancelled context mid-read leaves an unread response on the
-// wire). Those close the connection and leave the slot empty for a fresh dial. An
-// obs-websocket request failure (*ws.Error) is an application answer on a healthy
-// connection and keeps it.
-func (c *client) release(cl *ws.Client, err error) {
-	if err != nil && !isRequestError(err) {
+// release returns the connection to the pool unless the socket itself failed during the
+// operation (a dial, read or write error, including a context cancelled mid-read, which
+// leaves an unread response on the wire). The connection reports that itself; an
+// application-level error such as a postcondition mismatch keeps a healthy connection.
+func (c *client) release(cl *ws.Client, _ error) {
+	if cl.Broken() {
 		cl.Close()
 		c.pool <- nil
 		return
 	}
 	c.pool <- cl
-}
-
-func isRequestError(err error) bool {
-	var e *ws.Error
-	return errors.As(err, &e)
 }
 
 func (c *client) run(ctx context.Context, fn func(*ws.Client) error) error {
@@ -501,6 +495,8 @@ func (q exclusiveRequester) Batch(ctx context.Context, items []ws.BatchItem, chu
 	return b.Batch(ctx, items, chunk, halt)
 }
 
+// errNoBatch is returned by a wrapper whose inner requester cannot batch (test fakes);
+// mutationBatch then sends the items one by one.
 var errNoBatch = errors.New("requester cannot batch")
 
 // mutationBatch sends several mutations as one RequestBatch (one socket round trip
@@ -533,23 +529,35 @@ func mutationBatch(ctx context.Context, cl requester, collection string, items [
 	for _, it := range items {
 		g, err := scopedPreflight(ctx, cl, collection, it.Type)
 		if err != nil {
-			if traceErr := recordTrace(map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": it.Type, "request_data": it.Data, "native_sent": false, "status": "refused", "preflight": g, "error": err.Error()}); traceErr != nil {
-				return nil, fmt.Errorf("%w; refusal receipt write also failed: %v", err, traceErr)
-			}
-			return nil, err
+			return nil, refusedReceipt(it.Type, it.Data, g, err)
 		}
 		guard = g
 	}
 	results, err := b.Batch(ctx, items, 0, true)
 	if errors.Is(err, errNoBatch) {
-		return mutationBatch(ctx, plainRequester{cl}, collection, items)
+		out := make([]map[string]any, 0, len(items))
+		for _, it := range items {
+			x, err := mutation(ctx, cl, collection, it.Type, it.Data)
+			out = append(out, x)
+			if err != nil {
+				return out, err
+			}
+		}
+		return out, nil
 	}
 	types := make([]string, len(items))
+	// The receipt carries plain maps so redactTraceSettings can walk them; a typed slice
+	// would be encoded verbatim, settings included.
+	requests := make([]any, len(items))
 	for i, it := range items {
 		types[i] = it.Type
+		requests[i] = map[string]any{"requestType": it.Type, "requestData": it.Data}
 	}
-	entry := map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": "RequestBatch", "batch_request_types": types, "request_data": items, "native_sent": true, "status": "completed", "preflight": guard}
+	entry := map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": "RequestBatch", "batch_request_types": types, "request_data": requests, "native_sent": true, "status": "completed", "preflight": guard}
 	out := make([]map[string]any, 0, len(items))
+	if err == nil && len(results) > len(items) {
+		err = fmt.Errorf("RequestBatch returned %d results for %d requests", len(results), len(items))
+	}
 	if err == nil {
 		for i, r := range results {
 			if !r.OK {
@@ -566,47 +574,42 @@ func mutationBatch(ctx context.Context, cl requester, collection string, items [
 		entry["status"] = "failed-or-uncertain"
 		entry["error"] = err.Error()
 	}
-	if traceErr := recordTrace(entry); traceErr != nil {
-		if err != nil {
-			return out, fmt.Errorf("%w; receipt write also failed: %v", err, traceErr)
-		}
-		return out, fmt.Errorf("RequestBatch native result recorded as %q but receipt write failed: %w", entry["status"], traceErr)
-	}
-	return out, err
+	return out, recordReceipt(entry, err)
 }
 
-// plainRequester hides batching so mutationBatch can fall back to sequential calls.
-type plainRequester struct{ requester }
-
-func (q plainRequester) preflightScope() *preflightScope {
-	if p, ok := q.requester.(preflightScoper); ok {
-		return p.preflightScope()
+// recordReceipt writes a mutation receipt and folds a receipt-write failure into the
+// result. The native outcome stays in the error text, so an operator can tell a lost
+// receipt from a lost write.
+func recordReceipt(entry map[string]any, err error) error {
+	traceErr := recordTrace(entry)
+	if traceErr == nil {
+		return err
 	}
-	return nil
+	if err != nil {
+		return fmt.Errorf("%w; receipt write also failed: %v", err, traceErr)
+	}
+	return fmt.Errorf("%v native result recorded as %q but receipt write failed: %w", entry["request_type"], entry["status"], traceErr)
+}
+
+func refusedReceipt(typ string, data any, guard map[string]any, guardErr error) error {
+	return recordReceipt(map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": typ, "request_data": data, "native_sent": false, "status": "refused", "preflight": guard, "error": guardErr.Error()}, guardErr)
 }
 
 func mutation(ctx context.Context, cl requester, collection, typ string, data map[string]any) (map[string]any, error) {
 	guard, guardErr := scopedPreflight(ctx, cl, collection, typ)
 	if guardErr != nil {
-		if traceErr := recordTrace(map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": typ, "request_data": data, "native_sent": false, "status": "refused", "preflight": guard, "error": guardErr.Error()}); traceErr != nil {
-			return nil, fmt.Errorf("%w; refusal receipt write also failed: %v", guardErr, traceErr)
-		}
-		return nil, guardErr
+		return nil, refusedReceipt(typ, data, guard, guardErr)
 	}
 	x, err := request(ctx, cl, typ, data)
-	entry := map[string]any{"at": time.Now().UTC(), "request_type": typ, "request_data": data, "native_sent": true, "status": "completed", "preflight": guard, "response": x}
+	entry := map[string]any{"event": "mutation", "at": time.Now().UTC(), "request_type": typ, "request_data": data, "native_sent": true, "status": "completed", "preflight": guard, "response": x}
 	if err != nil {
 		entry["status"] = "failed-or-uncertain"
 		entry["error"] = err.Error()
 	}
-	entry["event"] = "mutation"
-	if traceErr := recordTrace(entry); traceErr != nil {
-		if err != nil {
-			return x, fmt.Errorf("%w; receipt write also failed: %v", err, traceErr)
-		}
-		return x, fmt.Errorf("%s native result recorded as %q but receipt write failed: %w", typ, entry["status"], traceErr)
+	if err := recordReceipt(entry, err); err != nil {
+		return x, err
 	}
-	if err == nil && os.Getenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE") == typ {
+	if os.Getenv("OBSTF_TF_INJECT_AFTER_NATIVE_TYPE") == typ {
 		return x, &authoritativeNativeInterruptionError{requestType: typ}
 	}
 	return x, err
@@ -701,8 +704,8 @@ func mutationPreflight(ctx context.Context, cl requester, collection, mutationTy
 	if !wok || !hok {
 		return ev, fmt.Errorf("GetVideoSettings omitted numeric base canvas")
 	}
-	if int(w) != 1920 || int(h) != 1080 {
-		return ev, fmt.Errorf("refusing mutation on unsupported live canvas %.0fx%.0f; pilot requires 1920x1080", w, h)
+	if int(w) != requiredCanvasWidth || int(h) != requiredCanvasHeight {
+		return ev, fmt.Errorf("refusing mutation on unsupported live canvas %.0fx%.0f; the provider requires %dx%d", w, h, requiredCanvasWidth, requiredCanvasHeight)
 	}
 	outputs := ev["outputs"].(map[string]any)
 	for _, q := range []string{"GetStreamStatus", "GetRecordStatus", "GetVirtualCamStatus", "GetReplayBufferStatus"} {
@@ -944,6 +947,9 @@ func existingSourceIdentity(ctx context.Context, cl requester, name, uuid string
 }
 
 func deleteAnchoredInput(ctx context.Context, cl requester, collection, inputUUID, anchorSceneUUID string, anchorItemID int64) error {
+	if _, err := ensureCollection(ctx, cl, collection); err != nil {
+		return err
+	}
 	in, ok, err := inputByUUID(ctx, cl, inputUUID)
 	if err != nil || !ok {
 		return err
@@ -1037,8 +1043,23 @@ func itemByID(ctx context.Context, cl requester, sceneName string, id int64) (it
 	return itemObservation{}, false, nil
 }
 
+// anchorIdentityError refuses to touch an anchor placement whose item now carries a
+// different source: the binding is stale and must be re-observed, never repaired blindly.
+func anchorIdentityError(exists bool, it itemObservation, inputUUID string) error {
+	if exists && it.SourceUUID != inputUUID {
+		return fmt.Errorf("anchor item %d rebound to source %s, expected %s; refusing all writes", it.ItemID, it.SourceUUID, inputUUID)
+	}
+	return nil
+}
+
+// Postcondition readback: how many observations to attempt, and how long between them.
+const (
+	postconditionAttempts = 40
+	postconditionDelay    = 100 * time.Millisecond
+)
+
 func waitUntil(ctx context.Context, check func() (bool, error)) error {
-	for i := 0; i < 40; i++ {
+	for i := 0; i < postconditionAttempts; i++ {
 		ok, err := check()
 		if err != nil {
 			return err
@@ -1049,10 +1070,10 @@ func waitUntil(ctx context.Context, check func() (bool, error)) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(postconditionDelay):
 		}
 	}
-	return fmt.Errorf("native postcondition did not converge within 4s")
+	return fmt.Errorf("native postcondition did not converge within %v", postconditionAttempts*postconditionDelay)
 }
 
 func itemMismatch(got itemObservation, sourceUUID string, enabled bool, index int64, tr transformModel) string {

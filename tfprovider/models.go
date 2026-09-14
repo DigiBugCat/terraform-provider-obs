@@ -67,19 +67,6 @@ type inputModel struct {
 	AnchorTransform *transformModel `tfsdk:"anchor_transform"`
 }
 
-type sceneItemModel struct {
-	ID         types.String    `tfsdk:"id"`
-	Collection types.String    `tfsdk:"collection"`
-	SceneName  types.String    `tfsdk:"scene_name"`
-	SceneUUID  types.String    `tfsdk:"scene_uuid"`
-	SourceName types.String    `tfsdk:"source_name"`
-	SourceUUID types.String    `tfsdk:"source_uuid"`
-	ItemID     types.Int64     `tfsdk:"item_id"`
-	Enabled    types.Bool      `tfsdk:"enabled"`
-	Index      types.Int64     `tfsdk:"index"`
-	Transform  *transformModel `tfsdk:"transform"`
-}
-
 type mediaInputModel struct {
 	ID                    types.String    `tfsdk:"id"`
 	Collection            types.String    `tfsdk:"collection"`
@@ -99,17 +86,4 @@ type mediaInputModel struct {
 	ObservedMediaState    types.String    `tfsdk:"observed_media_state"`
 	ObservedMediaCursor   types.Float64   `tfsdk:"observed_media_cursor"`
 	ObservedMediaDuration types.Float64   `tfsdk:"observed_media_duration"`
-}
-
-type colorFilterModel struct {
-	ID         types.String  `tfsdk:"id"`
-	Collection types.String  `tfsdk:"collection"`
-	ParentName types.String  `tfsdk:"parent_name"`
-	ParentUUID types.String  `tfsdk:"parent_uuid"`
-	Name       types.String  `tfsdk:"name"`
-	Kind       types.String  `tfsdk:"kind"`
-	HueShift   types.Float64 `tfsdk:"hue_shift"`
-	Opacity    types.Float64 `tfsdk:"opacity"`
-	Enabled    types.Bool    `tfsdk:"enabled"`
-	Index      types.Int64   `tfsdk:"index"`
 }

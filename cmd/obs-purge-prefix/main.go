@@ -39,15 +39,7 @@ func main() {
 			os.Exit(1)
 		}
 		var out []string
-		arr, _ := x[list].([]any)
-		for _, v := range arr {
-			var n string
-			switch t := v.(type) {
-			case map[string]any:
-				n, _ = t[key].(string)
-			case string:
-				n = t
-			}
+		for _, n := range ws.ListNames(x, list, key) {
 			if strings.HasPrefix(n, prefix) {
 				out = append(out, n)
 			}

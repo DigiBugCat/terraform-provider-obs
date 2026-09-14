@@ -11,12 +11,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"time"
 )
@@ -241,7 +241,7 @@ func noSymlinkAncestors(p string) error {
 		if e == nil && st.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("symlink ancestor refused: %s", p)
 		}
-		if e != nil && !os.IsNotExist(e) {
+		if e != nil && !errors.Is(e, fs.ErrNotExist) {
 			return e
 		}
 		next := filepath.Dir(p)
@@ -256,7 +256,7 @@ func inspect(root string, p plugin) receipt {
 	e := verify(filepath.Join(root, p.Bundle), p)
 	if e == nil {
 		r.Status = "matching"
-	} else if os.IsNotExist(e) {
+	} else if errors.Is(e, fs.ErrNotExist) {
 		r.Status = "missing"
 	}
 	return r
@@ -276,7 +276,7 @@ func install(ctx context.Context, root, base string, p plugin, replace bool, op 
 	target := filepath.Join(root, p.Bundle)
 	if _, e := os.Lstat(target); e == nil && !replace {
 		return r, fmt.Errorf("different existing bundle requires --replace")
-	} else if e != nil && !os.IsNotExist(e) {
+	} else if e != nil && !errors.Is(e, fs.ErrNotExist) {
 		return r, e
 	}
 	if e := os.MkdirAll(root, 0755); e != nil {
@@ -353,7 +353,7 @@ func install(ctx context.Context, root, base string, p plugin, replace bool, op 
 			return r, e
 		}
 		r.Backup = old
-	} else if !os.IsNotExist(e) {
+	} else if !errors.Is(e, fs.ErrNotExist) {
 		return r, e
 	}
 	if e = op.rename(stage, target); e != nil {
@@ -404,30 +404,13 @@ func Run(args []string) error {
 	if fs.NArg() != 0 || *mf == "" || *id == "" {
 		return fmt.Errorf("--manifest and --id required, no positional arguments")
 	}
-	b, e := os.ReadFile(*mf)
+	m, _, e := loadManifest(*mf, "")
 	if e != nil {
 		return e
 	}
-	var m manifest
-	d := json.NewDecoder(strings.NewReader(string(b)))
-	d.DisallowUnknownFields()
-	if e = d.Decode(&m); e != nil {
+	p, e := m.find(*id)
+	if e != nil {
 		return e
-	}
-	if e = validate(m); e != nil {
-		return e
-	}
-	if runtime.GOOS != m.OS || runtime.GOARCH != m.Arch {
-		return fmt.Errorf("unsupported host %s/%s, requires %s/%s", runtime.GOOS, runtime.GOARCH, m.OS, m.Arch)
-	}
-	var p plugin
-	for _, x := range m.Plugins {
-		if x.ID == *id {
-			p = x
-		}
-	}
-	if p.ID == "" {
-		return fmt.Errorf("unknown plugin ID")
 	}
 	if *root == "" {
 		home, e := os.UserHomeDir()

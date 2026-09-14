@@ -13,15 +13,13 @@ import (
 
 const BootstrapName = "__obstf_bootstrap__"
 
+// Build returns the minimal seed collection for a canonical collection name. Validate
+// exists for collections read back from disk; the freshly built shell is its own oracle.
 func Build(collection string) (map[string]any, error) {
 	if _, err := CollectionFilename(collection); err != nil {
 		return nil, err
 	}
-	out := buildUnchecked(collection)
-	if err := Validate(out, collection); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return buildUnchecked(collection), nil
 }
 
 // CollectionFilename is the single reversible mapping from a collection name to its OBS

@@ -43,9 +43,9 @@ func TestGenericFilterNewManagedKeyOverlay(t *testing.T) {
 	old.SettingsJSON = types.StringValue("{}")
 	plan := old
 	plan.SettingsJSON = types.StringValue(`{"new_plugin_key":{"value":9}}`)
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &old)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &old)
 	resp := resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{State: state, Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
 	if resp.Diagnostics.HasError() {
 		t.Fatal(resp.Diagnostics)
 	}
@@ -66,13 +66,13 @@ func TestGenericFilterCreateFailureRecordsObservedPrefix(t *testing.T) {
 			r.Schema(ctx, resource.SchemaRequest{}, &sc)
 			plan := genericTestModel()
 			plan.ID = types.StringUnknown()
-			resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &plan)}
-			r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
+			resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &plan)}
+			r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
 			if !resp.Diagnostics.HasError() {
 				t.Fatal("expected mutation error")
 			}
 			var got genericFilterModel
-			lunaLifecycleRequireState(t, ctx, resp.State, &got)
+			groupFixtureRequireState(t, ctx, resp.State, &got)
 			if got.ID.ValueString() != "lab|p|fx" || got.SettingsJSON.ValueString() != `{"gain":4}` {
 				t.Fatal("state claims intended rather than observed settings", got)
 			}
@@ -92,14 +92,14 @@ func TestGenericFilterUpdateFailureRecordsSettingsBeforeEnableFailure(t *testing
 	old.Enabled = types.BoolValue(true)
 	old.SettingsJSON = types.StringValue(`{"gain":1}`)
 	plan := genericTestModel()
-	state := lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &old)
+	state := groupFixtureSchemaAndState(t, ctx, sc.Schema, &old)
 	resp := resource.UpdateResponse{State: state}
-	r.Update(ctx, resource.UpdateRequest{State: state, Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
+	r.Update(ctx, resource.UpdateRequest{State: state, Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected failure")
 	}
 	var got genericFilterModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.SettingsJSON.ValueString() != `{"gain":4}` || !got.Enabled.ValueBool() || got.ID != old.ID {
 		t.Fatal("completed prefix lost", got)
 	}
@@ -115,13 +115,13 @@ func TestGenericFilterFailedReadbackDoesNotPromotePlan(t *testing.T) {
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
 	plan := genericTestModel()
 	plan.ID = types.StringUnknown()
-	resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &plan)}
-	r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
+	resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &plan)}
+	r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected failure")
 	}
 	var got genericFilterModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.ID.ValueString() != "lab|p|fx" || !got.SettingsJSON.IsNull() || !got.Enabled.IsNull() || !got.Index.IsNull() {
 		t.Fatal("unobserved desired values persisted", got)
 	}
@@ -134,7 +134,7 @@ func TestGenericFilterFailedReadbackDoesNotPromotePlan(t *testing.T) {
 	if read.Diagnostics.HasError() {
 		t.Fatal("partial state could not refresh", read.Diagnostics)
 	}
-	lunaLifecycleRequireState(t, ctx, read.State, &got)
+	groupFixtureRequireState(t, ctx, read.State, &got)
 	if got.SettingsJSON.ValueString() != "{}" || !got.Enabled.ValueBool() {
 		t.Fatal("recovery refresh must retain native placement without adopting settings", got)
 	}
@@ -149,13 +149,13 @@ func TestGenericFilterAcknowledgedCreateInterruptionRecordsNativeEnabled(t *test
 	r.Schema(ctx, resource.SchemaRequest{}, &sc)
 	plan := genericTestModel()
 	plan.ID = types.StringUnknown()
-	resp := resource.CreateResponse{State: lunaLifecycleSchemaAndState(t, ctx, sc.Schema, &plan)}
-	r.Create(ctx, resource.CreateRequest{Plan: lunaLifecycleSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
+	resp := resource.CreateResponse{State: groupFixtureSchemaAndState(t, ctx, sc.Schema, &plan)}
+	r.Create(ctx, resource.CreateRequest{Plan: groupFixtureSchemaAndPlan(t, ctx, sc.Schema, &plan)}, &resp)
 	if !resp.Diagnostics.HasError() {
 		t.Fatal("expected failure")
 	}
 	var got genericFilterModel
-	lunaLifecycleRequireState(t, ctx, resp.State, &got)
+	groupFixtureRequireState(t, ctx, resp.State, &got)
 	if got.ID.ValueString() != "lab|p|fx" || !got.Enabled.ValueBool() {
 		t.Fatal("create default enabled state not observed")
 	}

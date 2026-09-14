@@ -34,7 +34,7 @@ func portableTree(t *testing.T, port int, enabled bool) string {
 	if err := os.WriteFile(filepath.Join(dir, portableMarker), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	writeWSConfig(t, PortableConfigPath(dir), port, enabled)
+	writeWSConfig(t, portableConfigPath(dir), port, enabled)
 	return dir
 }
 
@@ -96,7 +96,7 @@ func TestDiscoverPortableDirWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Port != 4545 || used != PortableConfigPath(dir) {
+	if cfg.Port != 4545 || used != portableConfigPath(dir) {
 		t.Fatalf("OBSDir: port %d used %q", cfg.Port, used)
 	}
 
@@ -105,7 +105,7 @@ func TestDiscoverPortableDirWins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Port != 4545 || used != PortableConfigPath(dir) {
+	if cfg.Port != 4545 || used != portableConfigPath(dir) {
 		t.Fatalf("OBS_DIR: port %d used %q", cfg.Port, used)
 	}
 	t.Setenv("OBS_DIR", "")
@@ -114,14 +114,14 @@ func TestDiscoverPortableDirWins(t *testing.T) {
 	old := installDirs
 	installDirs = func() []string { return []string{dir} }
 	t.Cleanup(func() { installDirs = old })
-	if !IsPortableDir(dir) {
+	if !isPortableDir(dir) {
 		t.Fatal("portable marker not detected")
 	}
 	cfg, used, err = DiscoverConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Port != 4545 || used != PortableConfigPath(dir) {
+	if cfg.Port != 4545 || used != portableConfigPath(dir) {
 		t.Fatalf("marker discovery: port %d used %q", cfg.Port, used)
 	}
 }
@@ -172,8 +172,8 @@ func TestConfigCandidateOrder(t *testing.T) {
 	user := isolate(t)
 	dir := portableTree(t, 4545, true)
 	t.Setenv("OBS_DIR", dir)
-	got := ConfigCandidates(Config{ConfigPath: "/x/explicit.json"})
-	want := []string{"/x/explicit.json", PortableConfigPath(dir), user}
+	got := configCandidates(Config{ConfigPath: "/x/explicit.json"})
+	want := []string{"/x/explicit.json", portableConfigPath(dir), user}
 	if len(got) != len(want) {
 		t.Fatalf("candidates: %v", got)
 	}

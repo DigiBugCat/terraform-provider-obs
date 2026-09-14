@@ -40,8 +40,11 @@ func waitRemovedSource(ctx context.Context, cl requester, collection, uuid, pare
 			return false, err
 		}
 		present, err := inputPresent(ctx, cl, uuid)
-		if err != nil || !present {
-			return !present, err
+		if err != nil {
+			return false, err
+		}
+		if !present {
+			return true, nil
 		}
 		refs, err := allSourceReferences(ctx, cl, uuid, "", -1)
 		if err != nil {

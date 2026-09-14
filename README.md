@@ -230,8 +230,17 @@ make vet
 make docs     # regenerate docs/ from the provider schema
 ```
 
-Tests run offline against scripted obs-websocket fakes. The lifecycle checks (destroy,
-inventory, apply, plan) need a running OBS with the target collection selected.
+Tests run offline against scripted obs-websocket fakes. `go test -short` skips the
+`TestTerraformCLI*` tests, which run the pinned Terraform binary from
+`.tools/terraform/1.15.7/` against a provider built from the working tree
+(`tfprovider/cli_harness_test.go`). The lifecycle checks (destroy, inventory, apply,
+plan) need a running OBS with the target collection selected.
+
+Two environment variables exist for tests and diagnostics: `OBSTF_TF_TRACE_PATH`
+writes mutation receipts as JSONL with settings redacted, and
+`OBSTF_TF_INJECT_AFTER_NATIVE_TYPE=<request type>` makes the provider report an
+authoritative interruption after that request completes, so tests can prove identity
+survives a lost response.
 
 Releases are cut by pushing a `v*` tag. The release workflow signs the checksums with
 the `GPG_PRIVATE_KEY` repository secret, which is not configured yet, so no release

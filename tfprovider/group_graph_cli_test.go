@@ -1,11 +1,8 @@
 package tfprovider
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
@@ -14,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/coder/websocket"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -28,17 +24,10 @@ func TestTerraformCLIGroupGraphCreateWithUnknownObservations(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping Terraform CLI/provider subprocess regression in short mode")
 	}
-	root, err := filepath.Abs("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	terraform := filepath.Join(root, ".tools", "terraform", "1.15.7", "terraform")
-	if _, err := os.Stat(terraform); err != nil {
-		t.Skipf("pinned Terraform CLI unavailable: %v", err)
-	}
+	root, terraform := pinnedTerraform(t)
 
-	fake := &groupGraphFakeOBS{parentPlacement: lunaLifecyclePlacement()}
-	server := newGroupGraphWebsocketServer(t, fake)
+	fake := &groupGraphFakeOBS{parentPlacement: groupFixturePlacement()}
+	server := newFakeOBSWebsocketServer(t, fake)
 	serverURL, err := url.Parse(server.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -49,16 +38,7 @@ func TestTerraformCLIGroupGraphCreateWithUnknownObservations(t *testing.T) {
 	}
 
 	work := t.TempDir()
-	providerDir := filepath.Join(work, "providers")
-	if err := os.Mkdir(providerDir, 0700); err != nil {
-		t.Fatal(err)
-	}
-	providerBinary := filepath.Join(providerDir, "terraform-provider-obs")
-	build := exec.Command("go", "build", "-buildvcs=false", "-o", providerBinary, ".")
-	build.Dir = root
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build provider: %v\n%s", err, output)
-	}
+	providerDir := builtProvider(t, root)
 
 	asset := filepath.Join(work, "left.png")
 	if err := os.WriteFile(asset, []byte("synthetic asset"), 0600); err != nil {
@@ -140,21 +120,11 @@ resource "obs_group_graph" "unknown_plan" {
     }
   }]
 }
-`, port, strconv.Quote(lunaLifecycleCollection), strconv.Quote(lunaLifecycleSceneName), strconv.Quote(lunaLifecycleSceneUUID), strconv.Quote(lunaLifecycleGroupName), strconv.Quote(asset))
+`, port, strconv.Quote(groupFixtureCollection), strconv.Quote(groupFixtureSceneName), strconv.Quote(groupFixtureSceneUUID), strconv.Quote(groupFixtureGroupName), strconv.Quote(asset))
 	if err := os.WriteFile(filepath.Join(work, "main.tf"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}
-	cliConfig := fmt.Sprintf(`provider_installation {
-  dev_overrides {
-    "registry.terraform.io/digibugcat/obs" = %s
-  }
-  direct {}
-}
-`, strconv.Quote(providerDir))
-	cliConfigPath := filepath.Join(work, "dev.tfrc")
-	if err := os.WriteFile(cliConfigPath, []byte(cliConfig), 0600); err != nil {
-		t.Fatal(err)
-	}
+	cliConfigPath := writeDevOverrides(t, work, providerDir)
 	tracePath := filepath.Join(work, "trace.jsonl")
 	cmd := exec.Command(terraform, "apply", "-auto-approve", "-input=false", "-no-color")
 	cmd.Dir = work
@@ -177,7 +147,7 @@ resource "obs_group_graph" "unknown_plan" {
 	}
 	fake.mu.Lock()
 	groupExists := fake.groupExists
-	calls := append([]lunaLifecycleCall(nil), fake.calls...)
+	calls := append([]groupFixtureCall(nil), fake.calls...)
 	fake.mu.Unlock()
 	if !groupExists {
 		t.Fatal("fake transport did not observe CreateGroup")
@@ -208,17 +178,10 @@ func TestTerraformCLIGroupGraphRepairUsesSchemaCompatibleNoneBounds(t *testing.T
 	if testing.Short() {
 		t.Skip("skipping Terraform CLI/provider subprocess regression in short mode")
 	}
-	root, err := filepath.Abs("..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	terraform := filepath.Join(root, ".tools", "terraform", "1.15.7", "terraform")
-	if _, err := os.Stat(terraform); err != nil {
-		t.Skipf("pinned Terraform CLI unavailable: %v", err)
-	}
+	root, terraform := pinnedTerraform(t)
 
-	fake := &groupGraphFakeOBS{parentPlacement: lunaLifecyclePlacement()}
-	server := newGroupGraphWebsocketServer(t, fake)
+	fake := &groupGraphFakeOBS{parentPlacement: groupFixturePlacement()}
+	server := newFakeOBSWebsocketServer(t, fake)
 	serverURL, err := url.Parse(server.URL)
 	if err != nil {
 		t.Fatal(err)
@@ -229,16 +192,7 @@ func TestTerraformCLIGroupGraphRepairUsesSchemaCompatibleNoneBounds(t *testing.T
 	}
 
 	work := t.TempDir()
-	providerDir := filepath.Join(work, "providers")
-	if err := os.Mkdir(providerDir, 0700); err != nil {
-		t.Fatal(err)
-	}
-	providerBinary := filepath.Join(providerDir, "terraform-provider-obs")
-	build := exec.Command("go", "build", "-buildvcs=false", "-o", providerBinary, ".")
-	build.Dir = root
-	if output, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build provider: %v\n%s", err, output)
-	}
+	providerDir := builtProvider(t, root)
 
 	leftAsset := filepath.Join(work, "left.png")
 	rightAsset := filepath.Join(work, "right.png")
@@ -250,17 +204,7 @@ func TestTerraformCLIGroupGraphRepairUsesSchemaCompatibleNoneBounds(t *testing.T
 	if err := os.WriteFile(filepath.Join(work, "main.tf"), []byte(groupGraphCLIRepairConfig(port, leftAsset, rightAsset)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	cliConfig := fmt.Sprintf(`provider_installation {
-  dev_overrides {
-    "registry.terraform.io/digibugcat/obs" = %s
-  }
-  direct {}
-}
-`, strconv.Quote(providerDir))
-	cliConfigPath := filepath.Join(work, "dev.tfrc")
-	if err := os.WriteFile(cliConfigPath, []byte(cliConfig), 0600); err != nil {
-		t.Fatal(err)
-	}
+	cliConfigPath := writeDevOverrides(t, work, providerDir)
 	baseEnv := append(os.Environ(), "TF_CLI_CONFIG_FILE="+cliConfigPath, "TF_IN_AUTOMATION=1")
 	initialTrace := filepath.Join(work, "initial-trace.jsonl")
 	initial := exec.Command(terraform, "apply", "-auto-approve", "-input=false", "-no-color")
@@ -373,10 +317,10 @@ func TestTerraformCLIGroupGraphRepairUsesSchemaCompatibleNoneBounds(t *testing.T
 	fake.mu.Lock()
 	groupExists, groupUUID, parentItemID := fake.groupExists, fake.groupUUID, fake.parentItemID
 	children := append([]groupGraphFakeChild(nil), fake.children...)
-	repairCalls := append([]lunaLifecycleCall(nil), fake.calls[callStart:]...)
+	repairCalls := append([]groupFixtureCall(nil), fake.calls[callStart:]...)
 	parentX := fake.parentPlacement.Transform.X.ValueFloat64()
 	fake.mu.Unlock()
-	if !groupExists || groupUUID != lunaLifecycleGroupUUID || parentItemID != 7 {
+	if !groupExists || groupUUID != groupFixtureGroupUUID || parentItemID != 7 {
 		t.Fatalf("group identity changed during repair: exists=%t uuid=%s item=%d", groupExists, groupUUID, parentItemID)
 	}
 	var leftAfter, rightAfter *groupGraphFakeChild
@@ -522,104 +466,5 @@ resource "obs_group_graph" "repair" {
     }
   ]
 }
-`, port, strconv.Quote(lunaLifecycleCollection), strconv.Quote(lunaLifecycleSceneName), strconv.Quote(lunaLifecycleSceneUUID), strconv.Quote(lunaLifecycleGroupName), strconv.Quote(leftAsset), strconv.Quote(rightAsset))
-}
-
-func newGroupGraphWebsocketServer(t *testing.T, fake *groupGraphFakeOBS) *httptest.Server {
-	t.Helper()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, err := websocket.Accept(w, r, nil)
-		if err != nil {
-			return
-		}
-		defer conn.CloseNow()
-		ctx := context.Background()
-		if err := writeGroupGraphWebsocketEnvelope(ctx, conn, 0, map[string]any{"obsWebSocketVersion": "5.7.4", "rpcVersion": 1}); err != nil {
-			return
-		}
-		_, payload, err := conn.Read(ctx)
-		if err != nil {
-			return
-		}
-		var identify struct {
-			Op int `json:"op"`
-		}
-		if err := json.Unmarshal(payload, &identify); err != nil || identify.Op != 1 {
-			return
-		}
-		if err := writeGroupGraphWebsocketEnvelope(ctx, conn, 2, map[string]any{"negotiatedRpcVersion": 1}); err != nil {
-			return
-		}
-		for {
-			_, payload, err = conn.Read(ctx)
-			if err != nil {
-				return
-			}
-			var envelope struct {
-				Op int             `json:"op"`
-				D  json.RawMessage `json:"d"`
-			}
-			if err := json.Unmarshal(payload, &envelope); err != nil {
-				return
-			}
-			serve := func(typ string, data map[string]any) (map[string]any, map[string]any) {
-				responseData, requestErr := fake.Req(ctx, typ, data)
-				status := map[string]any{"result": requestErr == nil, "code": 100}
-				if requestErr != nil {
-					status["code"], status["comment"] = 500, requestErr.Error()
-				}
-				return status, responseData
-			}
-			switch envelope.Op {
-			case 6:
-				var request struct {
-					Type string         `json:"requestType"`
-					ID   string         `json:"requestId"`
-					Data map[string]any `json:"requestData"`
-				}
-				if err := json.Unmarshal(envelope.D, &request); err != nil {
-					return
-				}
-				status, responseData := serve(request.Type, request.Data)
-				if err := writeGroupGraphWebsocketEnvelope(ctx, conn, 7, map[string]any{"requestType": request.Type, "requestId": request.ID, "requestStatus": status, "responseData": responseData}); err != nil {
-					return
-				}
-			case 8: // RequestBatch: positional results, optional halt on first failure
-				var batch struct {
-					ID       string `json:"requestId"`
-					Halt     bool   `json:"haltOnFailure"`
-					Requests []struct {
-						Type string         `json:"requestType"`
-						Data map[string]any `json:"requestData"`
-					} `json:"requests"`
-				}
-				if err := json.Unmarshal(envelope.D, &batch); err != nil {
-					return
-				}
-				results := []any{}
-				for _, item := range batch.Requests {
-					status, responseData := serve(item.Type, item.Data)
-					results = append(results, map[string]any{"requestType": item.Type, "requestStatus": status, "responseData": responseData})
-					if batch.Halt && status["result"] == false {
-						break
-					}
-				}
-				if err := writeGroupGraphWebsocketEnvelope(ctx, conn, 9, map[string]any{"requestId": batch.ID, "results": results}); err != nil {
-					return
-				}
-			default:
-				return
-			}
-		}
-	}))
-	t.Cleanup(server.Close)
-	return server
-}
-
-func writeGroupGraphWebsocketEnvelope(ctx context.Context, conn *websocket.Conn, op int, data any) error {
-	payload, err := json.Marshal(map[string]any{"op": op, "d": data})
-	if err != nil {
-		return err
-	}
-	return conn.Write(ctx, websocket.MessageText, payload)
+`, port, strconv.Quote(groupFixtureCollection), strconv.Quote(groupFixtureSceneName), strconv.Quote(groupFixtureSceneUUID), strconv.Quote(groupFixtureGroupName), strconv.Quote(leftAsset), strconv.Quote(rightAsset))
 }

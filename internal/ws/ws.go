@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -67,14 +68,14 @@ const (
 	wsConfigRel       = "plugin_config/obs-websocket/config.json"
 )
 
-// PortableConfigPath is the obs-websocket config inside an OBS install directory.
-func PortableConfigPath(dir string) string {
+// portableConfigPath is the obs-websocket config inside an OBS install directory.
+func portableConfigPath(dir string) string {
 	return filepath.Join(dir, "config", "obs-studio", filepath.FromSlash(wsConfigRel))
 }
 
-// UserConfigPath is the per-OS obs-studio config location for a normal (non-portable)
+// defaultUserConfigPath is the per-OS obs-studio config location for a normal (non-portable)
 // install.
-func UserConfigPath() string {
+func defaultUserConfigPath() string {
 	switch runtime.GOOS {
 	case "darwin":
 		h, _ := os.UserHomeDir()
@@ -110,11 +111,11 @@ var installDirs = func() []string {
 	return dirs
 }
 
-// userConfigPath is UserConfigPath behind a var, for the same reason.
-var userConfigPath = UserConfigPath
+// userConfigPath is defaultUserConfigPath behind a var, for the same reason.
+var userConfigPath = defaultUserConfigPath
 
-// IsPortableDir reports whether an OBS install directory carries a portable marker.
-func IsPortableDir(dir string) bool {
+// isPortableDir reports whether an OBS install directory carries a portable marker.
+func isPortableDir(dir string) bool {
 	for _, m := range []string{portableMarker, portableMarkerOld} {
 		if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
 			return true
@@ -123,15 +124,13 @@ func IsPortableDir(dir string) bool {
 	return false
 }
 
-// ConfigCandidates is OBS's own resolution order, most specific first:
+// configCandidates is OBS's own resolution order, most specific first:
 //
 //  1. an explicit file (Config.ConfigPath, or $OBSTF_OBS_CONFIG)
 //  2. a named install directory ($OBS_DIR / $OBSTF_OBS_DIR / Config.OBSDir), read as portable
 //  3. any discoverable OBS install carrying a portable marker
 //  4. the per-OS user config
-//
-// Exported so the CLI can print what it looked at when nothing was found.
-func ConfigCandidates(hint Config) []string {
+func configCandidates(hint Config) []string {
 	var out []string
 	if hint.ConfigPath != "" {
 		out = append(out, hint.ConfigPath)
@@ -141,12 +140,12 @@ func ConfigCandidates(hint Config) []string {
 	}
 	for _, d := range []string{hint.OBSDir, os.Getenv("OBSTF_OBS_DIR"), os.Getenv("OBS_DIR")} {
 		if d != "" {
-			out = append(out, PortableConfigPath(d))
+			out = append(out, portableConfigPath(d))
 		}
 	}
 	for _, d := range installDirs() {
-		if d != "" && IsPortableDir(d) {
-			out = append(out, PortableConfigPath(d))
+		if d != "" && isPortableDir(d) {
+			out = append(out, portableConfigPath(d))
 		}
 	}
 	return append(out, userConfigPath())
@@ -159,7 +158,7 @@ func DiscoverConfig() (Config, string, error) { return DiscoverConfigWith(Config
 // The second return is always the path that was read (or the last one tried), so callers
 // can say WHICH config they believed -- the portable/AppData split is invisible otherwise.
 func DiscoverConfigWith(hint Config) (Config, string, error) {
-	cands := ConfigCandidates(hint)
+	cands := configCandidates(hint)
 	explicit := hint.ConfigPath != "" || os.Getenv("OBSTF_OBS_CONFIG") != ""
 	var p string
 	var b []byte
@@ -212,9 +211,15 @@ type Client struct {
 	c       *websocket.Conn
 	mu      sync.Mutex
 	n       int
-	Version string // obsWebSocketVersion from Hello
+	broken  atomic.Bool // set once a read or write failed; the connection must not be reused
+	Version string      // obsWebSocketVersion from Hello
 	RPC     int
 }
+
+// Broken reports whether a read or write on this connection has failed. A failed
+// request/response exchange can leave frames unread, so callers must not reuse the
+// connection; obs-websocket request failures (*Error) do not mark it.
+func (cl *Client) Broken() bool { return cl.broken.Load() }
 
 type envelope struct {
 	Op int             `json:"op"`
@@ -232,6 +237,12 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	c.SetReadLimit(64 << 20)
 	cl := &Client{c: c}
+	identified := false
+	defer func() {
+		if !identified {
+			c.Close(websocket.StatusPolicyViolation, "handshake failed")
+		}
+	}()
 
 	var hello struct {
 		Version string `json:"obsWebSocketVersion"`
@@ -243,7 +254,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	env, err := cl.read(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hello: %w", err)
 	}
 	if env.Op != 0 {
 		return nil, fmt.Errorf("expected Hello, got op %d", env.Op)
@@ -256,7 +267,6 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	ident := map[string]any{"rpcVersion": hello.RPC, "eventSubscriptions": 0}
 	if hello.Auth != nil {
 		if cfg.Password == "" {
-			c.Close(websocket.StatusNormalClosure, "")
 			return nil, errors.New("obs-websocket requires a password and none was provided")
 		}
 		ident["authentication"] = auth(cfg.Password, hello.Auth.Salt, hello.Auth.Challenge)
@@ -271,6 +281,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	if env.Op != 2 {
 		return nil, fmt.Errorf("identify rejected (op %d)", env.Op)
 	}
+	identified = true
 	return cl, nil
 }
 
@@ -288,12 +299,17 @@ func (cl *Client) write(ctx context.Context, op int, d any) error {
 	if err != nil {
 		return err
 	}
-	return cl.c.Write(ctx, websocket.MessageText, b)
+	if err := cl.c.Write(ctx, websocket.MessageText, b); err != nil {
+		cl.broken.Store(true)
+		return err
+	}
+	return nil
 }
 
 func (cl *Client) read(ctx context.Context) (envelope, error) {
 	_, b, err := cl.c.Read(ctx)
 	if err != nil {
+		cl.broken.Store(true)
 		return envelope{}, err
 	}
 	var env envelope
@@ -332,6 +348,9 @@ func (cl *Client) Req(ctx context.Context, typ string, data map[string]any) (map
 			Data   map[string]any `json:"responseData"`
 		}
 		if err := json.Unmarshal(env.D, &r); err != nil {
+			if !frameIsFor(env.D, rid) {
+				continue
+			}
 			return nil, err
 		}
 		if r.ID != rid {
@@ -371,7 +390,7 @@ func (cl *Client) Batch(ctx context.Context, items []BatchItem, chunk int, halt 
 		end := min(i+chunk, len(items))
 		res, err := cl.batchOne(ctx, items[i:end], halt)
 		if err != nil {
-			return out, err
+			return nil, fmt.Errorf("batch chunk %d: %w", i/chunk, err)
 		}
 		out = append(out, res...)
 	}
@@ -411,6 +430,9 @@ func (cl *Client) batchOne(ctx context.Context, items []BatchItem, halt bool) ([
 			} `json:"results"`
 		}
 		if err := json.Unmarshal(env.D, &r); err != nil {
+			if !frameIsFor(env.D, rid) {
+				continue
+			}
 			return nil, err
 		}
 		if r.ID != rid {
@@ -422,6 +444,34 @@ func (cl *Client) batchOne(ctx context.Context, items []BatchItem, halt bool) ([
 		}
 		return out, nil
 	}
+}
+
+// ListNames extracts the names from a list response such as GetSceneList ("scenes",
+// "sceneName"), GetInputList ("inputs", "inputName") or GetGroupList ("groups", ""),
+// whose elements are objects with a name key or plain strings.
+func ListNames(x map[string]any, list, key string) []string {
+	arr, _ := x[list].([]any)
+	out := make([]string, 0, len(arr))
+	for _, v := range arr {
+		switch t := v.(type) {
+		case map[string]any:
+			if n, _ := t[key].(string); n != "" {
+				out = append(out, n)
+			}
+		case string:
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// frameIsFor reports whether a response frame carries our requestId, so a malformed
+// frame that belongs to someone else can be skipped instead of failing this request.
+func frameIsFor(d json.RawMessage, rid string) bool {
+	var id struct {
+		ID string `json:"requestId"`
+	}
+	return json.Unmarshal(d, &id) == nil && id.ID == rid
 }
 
 // Timeout is a convenience for CLI contexts.

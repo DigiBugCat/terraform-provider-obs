@@ -26,34 +26,16 @@ func TestTerraformCLISceneContentsDrift(t *testing.T) {
 	if testing.Short() {
 		t.Skip("CLI fake regression")
 	}
-	root, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	terraform := filepath.Join(root, ".tools/terraform/1.15.7/terraform")
-	if _, err = os.Stat(terraform); err != nil {
-		t.Skip(err)
-	}
+	root, terraform := pinnedTerraform(t)
 	f := &sceneContentsCLIFake{base: newSceneContentsFake("scene", 31)}
-	server := newGenericFilterWebsocketServer(t, f)
+	server := newFakeOBSWebsocketServer(t, f)
 	endpoint, err := url.Parse(server.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	work := t.TempDir()
-	providers := filepath.Join(work, "providers")
-	if err = os.Mkdir(providers, 0700); err != nil {
-		t.Fatal(err)
-	}
-	build := exec.Command("go", "build", "-buildvcs=false", "-o", filepath.Join(providers, "terraform-provider-obs"), ".")
-	build.Dir = root
-	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build: %v %s", err, out)
-	}
-	rc := filepath.Join(work, "terraform.rc")
-	if err = os.WriteFile(rc, []byte(fmt.Sprintf(`provider_installation { dev_overrides { "registry.terraform.io/digibugcat/obs" = %q } direct {} }`, providers)), 0600); err != nil {
-		t.Fatal(err)
-	}
+	providers := builtProvider(t, root)
+	rc := writeDevOverrides(t, work, providers)
 	config := fmt.Sprintf(`terraform {
  required_providers { obs = { source = "digibugcat/obs" } }
 }
@@ -68,7 +50,7 @@ resource "obs_scene_contents" "test" {
  scene_uuid = %q
  item_ids = [31]
 }
-`, endpoint.Port(), lunaLifecycleCollection, f.base.sceneName, lunaLifecycleSceneUUID)
+`, endpoint.Port(), groupFixtureCollection, f.base.sceneName, groupFixtureSceneUUID)
 	if err = os.WriteFile(filepath.Join(work, "main.tf"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}

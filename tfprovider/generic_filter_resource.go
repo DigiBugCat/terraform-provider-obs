@@ -193,16 +193,22 @@ func (r *genericFilterResource) Update(ctx context.Context, req resource.UpdateR
 			return err
 		}
 		ok, err := existingSourceIdentity(ctx, cl, plan.ParentName.ValueString(), plan.ParentUUID.ValueString())
-		if err != nil || !ok {
-			return fmt.Errorf("parent unavailable: %v", err)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("parent %q is missing or rebound; refresh before apply", plan.ParentName.ValueString())
 		}
 		xs, err := sourceFilters(ctx, cl, plan.ParentName.ValueString())
 		if err != nil {
 			return err
 		}
 		got, ok, err := findFilter(xs, plan.Name.ValueString())
-		if err != nil || !ok {
-			return fmt.Errorf("filter unavailable: %v", err)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("filter %q is missing on %q; refresh before apply", plan.Name.ValueString(), plan.ParentName.ValueString())
 		}
 		if !(got.Kind == plan.Kind.ValueString()) {
 			return fmt.Errorf("same-name filter kind rebound; refusing all writes")
@@ -306,7 +312,25 @@ func (r *genericFilterResource) ImportState(ctx context.Context, req resource.Im
 		Kind       string          `json:"kind"`
 		Settings   json.RawMessage `json:"settings"`
 	}
-	if err := json.Unmarshal([]byte(req.ID), &id); err != nil || id.Collection == "" || id.ParentUUID == "" || id.ParentName == "" || id.Name == "" || (id.Kind == "" && r.spec == nil) {
+	parsed := false
+	if r.spec != nil && r.spec.ImportID != nil {
+		if c, pu, pn, n, ok := r.spec.ImportID(req.ID); ok {
+			id.Collection, id.ParentUUID, id.ParentName, id.Name, parsed = c, pu, pn, n, true
+		}
+	}
+	if !parsed {
+		if err := json.Unmarshal([]byte(req.ID), &id); err != nil {
+			id = struct {
+				Collection string          `json:"collection"`
+				ParentUUID string          `json:"parent_uuid"`
+				ParentName string          `json:"parent_name"`
+				Name       string          `json:"name"`
+				Kind       string          `json:"kind"`
+				Settings   json.RawMessage `json:"settings"`
+			}{}
+		}
+	}
+	if id.Collection == "" || id.ParentUUID == "" || id.ParentName == "" || id.Name == "" || (id.Kind == "" && r.spec == nil) {
 		resp.Diagnostics.AddError("Invalid generic filter import ID", "Use JSON with collection,parent_uuid,parent_name,name,kind,settings (object of explicitly managed keys).")
 		return
 	}
@@ -343,34 +367,6 @@ func (r *genericFilterResource) ImportState(ctx context.Context, req resource.Im
 
 var _ resource.ResourceWithConfigure = (*genericFilterResource)(nil)
 var _ resource.ResourceWithImportState = (*genericFilterResource)(nil)
-
-// Missing newly owned keys are differences to write, not malformed observations.
-func genericFilterSettingsForUpdate(ctx context.Context, cl requester, got filterObservation, desired map[string]any) (map[string]any, error) {
-	defaults := map[string]any{}
-	for k := range desired {
-		if _, ok := got.Settings[k]; !ok {
-			x, err := request(ctx, cl, "GetSourceFilterDefaultSettings", map[string]any{"filterKind": got.Kind})
-			if err != nil {
-				return nil, err
-			}
-			var ok bool
-			defaults, ok = x["defaultFilterSettings"].(map[string]any)
-			if !ok {
-				return nil, fmt.Errorf("GetSourceFilterDefaultSettings omitted object")
-			}
-			break
-		}
-	}
-	values := map[string]any{}
-	for k := range desired {
-		if v, ok := got.Settings[k]; ok {
-			values[k] = v
-		} else if v, ok := defaults[k]; ok {
-			values[k] = v
-		}
-	}
-	return values, nil
-}
 
 // Recovery records observed mutable fields only. If readback fails, null values
 // explicitly preserve uncertainty rather than claiming the plan was executed.
@@ -439,4 +435,34 @@ func (r *genericFilterResource) recoverFilterState(ctx context.Context, cl reque
 	}
 	ds.Append(r.writeModel(ctx, dst, &identity)...)
 	return ds
+}
+
+// genericFilterSettingsForUpdate resolves the current value of every managed key from
+// the live filter, then kind defaults. A key OBS reports in neither is a new plugin
+// setting the update introduces, so it is simply written rather than refused.
+func genericFilterSettingsForUpdate(ctx context.Context, cl requester, got filterObservation, desired map[string]any) (map[string]any, error) {
+	defaults := map[string]any{}
+	for k := range desired {
+		if _, ok := got.Settings[k]; !ok {
+			x, err := request(ctx, cl, "GetSourceFilterDefaultSettings", map[string]any{"filterKind": got.Kind})
+			if err != nil {
+				return nil, err
+			}
+			var ok bool
+			defaults, ok = x["defaultFilterSettings"].(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("GetSourceFilterDefaultSettings omitted object")
+			}
+			break
+		}
+	}
+	values := map[string]any{}
+	for k := range desired {
+		if v, ok := got.Settings[k]; ok {
+			values[k] = v
+		} else if v, ok := defaults[k]; ok {
+			values[k] = v
+		}
+	}
+	return values, nil
 }

@@ -214,7 +214,7 @@ func bridgePlacementFromNative(v any) (bridgePlacementModel, error) {
 
 func integerNumber(v any) (int64, bool) {
 	n, ok := numberValue(v)
-	if !ok || math.Trunc(n) != n || n < math.MinInt64 || n > math.MaxInt64 {
+	if !ok || math.Trunc(n) != n || n < math.MinInt64 || n >= math.MaxInt64 {
 		return 0, false
 	}
 	return int64(n), true

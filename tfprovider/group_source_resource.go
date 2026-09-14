@@ -103,31 +103,21 @@ func (r *groupSourceResource) Create(ctx context.Context, req resource.CreateReq
 			"inputName": m.Name.ValueString(), "inputKind": m.Kind.ValueString(),
 			"inputSettings": want, "placement": placement,
 		})
-		var child bridgeChildObservation
-		childErr := fmt.Errorf("bridge result is not trusted because the envelope was invalid")
-		if callErr == nil || isAuthoritativeNativeInterruption(callErr) {
-			child, childErr = bridgeChildFromResult(envelope.Result)
-		}
-		if childErr == nil {
+		child, trusted, err := bridgeOutcome("CreateInputInGroup", envelope, callErr, bridgeChildFromResult)
+		if trusted {
 			m.InputUUID, m.ItemID = types.StringValue(child.UUID), types.Int64Value(child.ItemID)
 			m.ID = types.StringValue(groupSourceID(m.Collection.ValueString(), m.SceneUUID.ValueString(), m.GroupUUID.ValueString(), child.UUID, child.ItemID))
 			m.SourceWidth, m.SourceHeight = types.Int64Value(child.Width), types.Int64Value(child.Height)
 			resp.Diagnostics.Append(resp.State.Set(ctx, &m)...)
 		}
-		if callErr != nil {
-			return callErr
-		}
-		if envelope.Outcome != "completed" {
-			return fmt.Errorf("bridge CreateInputInGroup %s (%s): %s; re-observe before retry", envelope.Outcome, envelope.Code, envelope.Message)
-		}
-		if childErr != nil {
-			return childErr
+		if err != nil {
+			return err
 		}
 		if child.Name != m.Name.ValueString() || bridgePlacementDifference(child.Placement, *mm.Placement) != "" {
 			return fmt.Errorf("bridge group source returned mismatched identity/placement")
 		}
 		mm, mm.Placement = m, &clamped
-		settled, err := waitGroupSourceChild(ctx, cl, mm, 40, 100*time.Millisecond)
+		settled, err := waitGroupSourceChild(ctx, cl, mm, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}
@@ -271,42 +261,42 @@ func (r *groupSourceResource) Update(ctx context.Context, req resource.UpdateReq
 		plan.InputUUID = state.InputUUID
 		itemID := state.ItemID.ValueInt64()
 		var observedPlacement bridgePlacementModel
+		children, err := containerItemCount(ctx, cl, plan.GroupName.ValueString(), true)
+		if err != nil {
+			return err
+		}
+		// target is the placement OBS can honour now; state keeps the declared index.
+		target := *plan.Placement
+		target.Index = types.Int64Value(clampCreateIndex(plan.Placement.Index.ValueInt64(), children-1))
+		if !exists {
+			target.Index = types.Int64Value(clampCreateIndex(plan.Placement.Index.ValueInt64(), children))
+		}
 		if !exists {
 			// A source can intentionally have multiple placements in this group.
 			// Restore the missing owned anchor with a new item; never adopt a
 			// surviving sibling that happens to reference the same source.
-			placement, _ := plan.Placement.request()
+			placement, _ := target.request()
 			opID := bridgeOperationID("repair-group-source", plan.Name.ValueString())
 			envelope, callErr := bridgeMutation(ctx, cl, plan.Collection.ValueString(), "AddSourceToGroup", opID, map[string]any{
 				"scene":  bridgeIdentity(plan.SceneUUID.ValueString(), plan.SceneName.ValueString(), 0),
 				"group":  bridgeIdentity(plan.GroupUUID.ValueString(), plan.GroupName.ValueString(), plan.GroupItemID.ValueInt64()),
 				"source": bridgeIdentity(in.UUID, in.Name, 0), "placement": placement,
 			})
-			var created bridgeChildObservation
-			createdErr := fmt.Errorf("bridge result is not trusted because the envelope was invalid")
-			if callErr == nil || isAuthoritativeNativeInterruption(callErr) {
-				created, createdErr = bridgeChildFromResult(envelope.Result)
-			}
-			if createdErr == nil {
+			created, trusted, err := bridgeOutcome("AddSourceToGroup", envelope, callErr, bridgeChildFromResult)
+			if trusted {
 				itemID = created.ItemID
 				plan.ItemID = types.Int64Value(itemID)
 				plan.ID = types.StringValue(groupSourceID(plan.Collection.ValueString(), plan.SceneUUID.ValueString(), plan.GroupUUID.ValueString(), in.UUID, itemID))
 				resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 			}
-			if callErr != nil {
-				return callErr
-			}
-			if envelope.Outcome != "completed" {
-				return fmt.Errorf("bridge AddSourceToGroup %s (%s): %s; re-observe before retry", envelope.Outcome, envelope.Code, envelope.Message)
-			}
-			if createdErr != nil {
-				return createdErr
+			if err != nil {
+				return err
 			}
 			observedPlacement = created.Placement
 		} else {
 			observedPlacement = child.Placement
 		}
-		if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), plan.GroupName.ValueString(), itemID, observedPlacement, plan.Placement); err != nil {
+		if err := updateBridgeItem(ctx, cl, plan.Collection.ValueString(), plan.GroupName.ValueString(), itemID, observedPlacement, &target); err != nil {
 			return err
 		}
 		want, _ := parseGenericSettings(plan.SettingsJSON.ValueString())
@@ -322,7 +312,9 @@ func (r *groupSourceResource) Update(ctx context.Context, req resource.UpdateReq
 		plan.InputUUID = state.InputUUID
 		plan.ItemID = types.Int64Value(itemID)
 		plan.ID = types.StringValue(groupSourceID(plan.Collection.ValueString(), plan.SceneUUID.ValueString(), plan.GroupUUID.ValueString(), in.UUID, itemID))
-		settled, err := waitGroupSourceChild(ctx, cl, plan, 40, 100*time.Millisecond)
+		verify := plan
+		verify.Placement = &target
+		settled, err := waitGroupSourceChild(ctx, cl, verify, postconditionAttempts, postconditionDelay)
 		if err != nil {
 			return err
 		}

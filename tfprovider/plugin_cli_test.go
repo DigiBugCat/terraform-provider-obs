@@ -28,21 +28,10 @@ func TestTerraformCLIPluginPlanInstallDriftAndRetain(t *testing.T) {
 			}
 		}
 	}
-	root, _ := filepath.Abs("../..")
-	tf := filepath.Join(root, ".tools/terraform/1.15.7/terraform")
-	if _, e := os.Stat(tf); e != nil {
-		t.Skip(e)
-	}
+	root, tf := pinnedTerraform(t)
 	work, _ := filepath.EvalSymlinks(t.TempDir())
-	providers := filepath.Join(work, "providers")
-	os.Mkdir(providers, 0700)
-	build := exec.Command("go", "build", "-buildvcs=false", "-o", filepath.Join(providers, "terraform-provider-obs"), ".")
-	build.Dir = root
-	if out, e := build.CombinedOutput(); e != nil {
-		t.Fatalf("build: %v %s", e, out)
-	}
-	rc := filepath.Join(work, "terraform.rc")
-	os.WriteFile(rc, []byte(fmt.Sprintf("provider_installation {\n dev_overrides {\n \"registry.terraform.io/digibugcat/obs\" = %q\n }\n direct {}\n}\n", providers)), 0600)
+	providers := builtProvider(t, root)
+	rc := writeDevOverrides(t, work, providers)
 	source := filepath.Join(work, "source.plugin")
 	os.Mkdir(source, 0755)
 	payload := []byte("synthetic plugin payload")

@@ -222,7 +222,7 @@ func TestTraceFailuresAndPostconditionReadErrorsAreNotDiscarded(t *testing.T) {
 		t.Setenv("OBSTF_TF_TRACE_PATH", filepath.Join(t.TempDir(), "missing", "trace.jsonl"))
 		f := &fakeRequester{responses: map[string]map[string]any{"GetVersion": {"obsVersion": "32.2.2", "obsWebSocketVersion": "5.7.4", "availableRequests": []any{}}}}
 		_, err := mutation(context.Background(), f, "Reference Terraform Lab", "SetSceneItemTransform", map[string]any{})
-		if err == nil || !strings.Contains(err.Error(), "refusal receipt write also failed") {
+		if err == nil || !strings.Contains(err.Error(), "receipt write also failed") {
 			t.Fatalf("err=%v", err)
 		}
 	})

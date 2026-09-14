@@ -9,9 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// A local model keeps the preexisting scene item schema layout intact for other
-// resources while adding opt-in group containers and duplicate placements.
-type groupAwareSceneItemModel struct {
+// sceneItemModel is obs_scene_item: a placement of an existing source in a scene or,
+// with parent_kind = "group", directly in a group.
+type sceneItemModel struct {
 	ID             types.String    `tfsdk:"id"`
 	Collection     types.String    `tfsdk:"collection"`
 	SceneName      types.String    `tfsdk:"scene_name"`
@@ -26,7 +26,7 @@ type groupAwareSceneItemModel struct {
 	AllowDuplicate types.Bool      `tfsdk:"allow_duplicate"`
 }
 
-func normalizeSceneItemDefaults(m *groupAwareSceneItemModel) {
+func normalizeSceneItemDefaults(m *sceneItemModel) {
 	if m.ParentKind.IsNull() {
 		m.ParentKind = types.StringValue("scene")
 	}
@@ -149,7 +149,7 @@ func sceneItemContainer(ctx context.Context, cl requester, kind, uuid string) (s
 	return found, count == 1, nil
 }
 
-func createContainerSceneItem(ctx context.Context, cl requester, container sceneItemContainerObservation, m groupAwareSceneItemModel) (int64, error) {
+func createContainerSceneItem(ctx context.Context, cl requester, container sceneItemContainerObservation, m sceneItemModel) (int64, error) {
 	if m.ParentKind.ValueString() == "scene" {
 		x, err := mutation(ctx, cl, m.Collection.ValueString(), "CreateSceneItem", map[string]any{"sceneUuid": container.UUID, "sourceUuid": m.SourceUUID.ValueString(), "sceneItemEnabled": m.Enabled.ValueBool()})
 		if err != nil && !isAuthoritativeNativeInterruption(err) {
@@ -207,7 +207,7 @@ func createContainerSceneItem(ctx context.Context, cl requester, container scene
 	return child.ItemID, nil
 }
 
-func sceneItemBridgePlacement(m groupAwareSceneItemModel) (map[string]any, error) {
+func sceneItemBridgePlacement(m sceneItemModel) (map[string]any, error) {
 	if m.Transform == nil {
 		return nil, fmt.Errorf("transform is required")
 	}
@@ -237,7 +237,7 @@ func containerSceneItemID(collection, container, source string, item int64, kind
 	return id
 }
 
-func deleteContainerSceneItem(ctx context.Context, cl requester, container sceneItemContainerObservation, m groupAwareSceneItemModel, it itemObservation) error {
+func deleteContainerSceneItem(ctx context.Context, cl requester, container sceneItemContainerObservation, m sceneItemModel, it itemObservation) error {
 	if m.ParentKind.ValueString() == "scene" {
 		_, err := mutation(ctx, cl, m.Collection.ValueString(), "RemoveSceneItem", map[string]any{"sceneUuid": container.UUID, "sceneItemId": it.ItemID})
 		return err

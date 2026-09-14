@@ -59,7 +59,7 @@ type delayedGroupRelease struct {
 func (f *delayedGroupRelease) Req(ctx context.Context, typ string, data map[string]any) (map[string]any, error) {
 	if typ == "GetSourceScreenshot" {
 		f.frames++
-		if data["sourceUuid"] != lunaLifecycleSceneUUID {
+		if data["sourceUuid"] != groupFixtureSceneUUID {
 			return nil, fmt.Errorf("wrong release frame scene")
 		}
 		if !f.keepAlive {
@@ -90,7 +90,7 @@ func TestGroupSourceDeletionWaitsForReleaseAndRetriesMissingAnchor(t *testing.T)
 				f.cancel = cancel
 			}
 			m := groupSourceTestModel()
-			state := lunaLifecycleSchemaAndState(t, ctx, groupSourceTestSchema(ctx), &m)
+			state := groupFixtureSchemaAndState(t, ctx, groupSourceTestSchema(ctx), &m)
 			resp := resource.DeleteResponse{State: state}
 			(&groupSourceResource{client: &client{testRequester: f}}).Delete(ctx, resource.DeleteRequest{State: state}, &resp)
 			wantErr := f.racedRef || f.keepAlive

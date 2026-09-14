@@ -62,7 +62,7 @@ func validateMedia(m mediaInputModel) error {
 		return fmt.Errorf("media asset is not a regular file")
 	}
 	if !m.IsLocalFile.ValueBool() {
-		return fmt.Errorf("pilot requires is_local_file=true")
+		return fmt.Errorf("obs_media_input requires is_local_file = true")
 	}
 	return nil
 }
@@ -151,12 +151,6 @@ func mediaMatches(settings, want map[string]any) string {
 	}
 	return ""
 }
-func anchorIdentityError(exists bool, it itemObservation, inputUUID string) error {
-	if exists && it.SourceUUID != inputUUID {
-		return fmt.Errorf("anchor item rebound; refusing all writes")
-	}
-	return nil
-}
 func waitMediaInput(ctx context.Context, cl requester, uuid, name string, want map[string]any) (inputObservation, error) {
 	var last string
 	for i := 0; i < 40; i++ {
@@ -244,7 +238,7 @@ func (r *mediaInputResource) Create(ctx context.Context, req resource.CreateRequ
 		if _, err := waitMediaInput(ctx, cl, uuid, m.Name.ValueString(), mediaSettings(m)); err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, id, uuid, m.AnchorEnabled.ValueBool(), anchorIndex, *m.AnchorTransform, 40, 100*time.Millisecond); err != nil {
+		if _, err := waitItemExpected(ctx, cl, scene.Name, id, uuid, m.AnchorEnabled.ValueBool(), anchorIndex, *m.AnchorTransform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		return setMediaObserved(ctx, cl, uuid, &m)
@@ -303,8 +297,8 @@ func (r *mediaInputResource) Read(ctx context.Context, req resource.ReadRequest,
 			m.AnchorSceneName = types.StringNull()
 			return nil
 		}
-		if it.SourceUUID != in.UUID {
-			return fmt.Errorf("anchor rebound")
+		if err := anchorIdentityError(true, it, in.UUID); err != nil {
+			return err
 		}
 		m.AnchorEnabled = types.BoolValue(it.Enabled)
 		m.AnchorIndex = types.Int64Value(it.Index)
@@ -335,15 +329,21 @@ func (r *mediaInputResource) Update(ctx context.Context, req resource.UpdateRequ
 			return err
 		}
 		in, ok, err := inputByUUID(ctx, cl, state.InputUUID.ValueString())
-		if err != nil || !ok {
-			return fmt.Errorf("input disappeared: %v", err)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return fmt.Errorf("input %s disappeared; refresh before apply", state.InputUUID.ValueString())
 		}
 		if in.Name != plan.Name.ValueString() || in.Kind != "ffmpeg_source" {
 			return fmt.Errorf("input identity/name/kind rebound")
 		}
 		scene, ok, err := sceneByUUID(ctx, cl, plan.AnchorSceneUUID.ValueString())
-		if err != nil || !ok || scene.Name != plan.AnchorSceneName.ValueString() {
-			return fmt.Errorf("anchor scene unavailable: %v", err)
+		if err != nil {
+			return err
+		}
+		if !ok || scene.Name != plan.AnchorSceneName.ValueString() {
+			return fmt.Errorf("anchor scene %s is missing or renamed; refresh before apply", plan.AnchorSceneUUID.ValueString())
 		}
 		if plan.AnchorTransform == nil {
 			return fmt.Errorf("anchor_transform required")
@@ -366,6 +366,16 @@ func (r *mediaInputResource) Update(ctx context.Context, req resource.UpdateRequ
 				return err
 			}
 		}
+		siblings, err := containerItemCount(ctx, cl, scene.Name, false)
+		if err != nil {
+			return err
+		}
+		// A re-created anchor lands at the end of the list; an existing one moves within it.
+		// State keeps the declared index (see clampCreateIndex).
+		anchorIndex := clampCreateIndex(plan.AnchorIndex.ValueInt64(), siblings-1)
+		if !exists {
+			anchorIndex = clampCreateIndex(plan.AnchorIndex.ValueInt64(), siblings)
+		}
 		if !exists {
 			x, err := mutation(ctx, cl, plan.Collection.ValueString(), "CreateSceneItem", map[string]any{"sceneUuid": scene.UUID, "sourceUuid": in.UUID, "sceneItemEnabled": plan.AnchorEnabled.ValueBool()})
 			if err != nil {
@@ -381,16 +391,16 @@ func (r *mediaInputResource) Update(ctx context.Context, req resource.UpdateRequ
 			resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 		}
 		if exists {
-			if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform); err != nil {
+			if err := updateItem(ctx, cl, plan.Collection.ValueString(), scene.Name, it, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform); err != nil {
 				return err
 			}
-		} else if err := setItem(ctx, cl, plan.Collection.ValueString(), scene.Name, id, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform); err != nil {
+		} else if err := setItem(ctx, cl, plan.Collection.ValueString(), scene.Name, id, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform); err != nil {
 			return err
 		}
 		if _, err := waitMediaInput(ctx, cl, in.UUID, plan.Name.ValueString(), want); err != nil {
 			return err
 		}
-		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, plan.AnchorEnabled.ValueBool(), plan.AnchorIndex.ValueInt64(), *plan.AnchorTransform, 40, 100*time.Millisecond); err != nil {
+		if _, err := waitItemExpected(ctx, cl, scene.Name, id, in.UUID, plan.AnchorEnabled.ValueBool(), anchorIndex, *plan.AnchorTransform, postconditionAttempts, postconditionDelay); err != nil {
 			return err
 		}
 		plan.InputUUID = state.InputUUID

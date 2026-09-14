@@ -68,7 +68,7 @@ func (g *lockGate) wait(ctx context.Context, what, op string, try func() bool, d
 		select {
 		case <-ch:
 		case <-ctx.Done():
-			return fmt.Errorf("%s: %s gave up waiting for %s (%s): %w", op, op, what, holders, ctx.Err())
+			return fmt.Errorf("%s gave up waiting for %s (%s): %w", op, what, holders, ctx.Err())
 		case <-deadline.C:
 			return fmt.Errorf("lock wait timeout: %s waited %v for %s; %s", op, lockWaitTimeout(), what, holders)
 		}
@@ -191,7 +191,7 @@ func opLabel() string {
 		name = strings.TrimPrefix(name, "tfprovider.")
 		for _, m := range []string{".Create", ".Read", ".Update", ".Delete", ".ImportState"} {
 			if i := strings.Index(name, m); i >= 0 {
-				return strings.Trim(name[:i+len(m)], "(*)")
+				return strings.NewReplacer("(*", "", ")", "").Replace(name[:i+len(m)])
 			}
 		}
 		if !more {
