@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "request_type": "SetSceneItemTransform",
+  "source": {
+    "tag": "5.7.4",
+    "protocol": "https://github.com/obsproject/obs-websocket/blob/5.7.4/docs/generated/protocol.json",
+    "handler": "https://github.com/obsproject/obs-websocket/blob/5.7.4/src/requesthandler/RequestHandler_SceneItems.cpp",
+    "validation": "https://github.com/obsproject/obs-websocket/blob/5.7.4/src/requesthandler/rpc/Request.cpp",
+    "local_pinned_header": "native-bridge/build/deps/obs-websocket-api-5.7.4.h",
+    "local_pinned_header_sha256": "c29e8e38ee66c36db79cae86217ab0f270aad39f97e82090809d087c281b7948",
+    "local_contract": "native-bridge/CONTRACT.md",
+    "local_contract_sha256": "2cd75b5478759f7b16cc99d43f5ff4be362e7cc2b8ac37ce5e5093f769917911"
+  },
+  "outer_fields": [
+    {
+      "name": "canvasUuid",
+      "json_type": "string",
+      "required": false
+    },
+    {
+      "name": "sceneName",
+      "json_type": "string",
+      "required": false
+    },
+    {
+      "name": "sceneUuid",
+      "json_type": "string",
+      "required": false
+    },
+    {
+      "name": "sceneItemId",
+      "json_type": "number",
+      "required": true,
+      "minimum": 0
+    },
+    {
+      "name": "sceneItemTransform",
+      "json_type": "object",
+      "required": true
+    }
+  ],
+  "transform_fields": [
+    {
+      "name": "positionX",
+      "json_type": "number",
+      "required": false,
+      "minimum": -90001,
+      "maximum": 90001
+    },
+    {
+      "name": "positionY",
+      "json_type": "number",
+      "required": false,
+      "minimum": -90001,
+      "maximum": 90001
+    },
+    {
+      "name": "rotation",
+      "json_type": "number",
+      "required": false,
+      "minimum": -360,
+      "maximum": 360
+    },
+    {
+      "name": "scaleX",
+      "json_type": "number",
+      "required": false,
+      "validation": "source-dimension-dependent final geometry"
+    },
+    {
+      "name": "scaleY",
+      "json_type": "number",
+      "required": false,
+      "validation": "source-dimension-dependent final geometry"
+    },
+    {
+      "name": "alignment",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    {
+      "name": "boundsType",
+      "json_type": "string",
+      "required": false,
+      "minimum_length": 1
+    },
+    {
+      "name": "boundsAlignment",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 4294967295
+    },
+    {
+      "name": "boundsWidth",
+      "json_type": "number",
+      "required": false,
+      "minimum": 1,
+      "maximum": 90001
+    },
+    {
+      "name": "boundsHeight",
+      "json_type": "number",
+      "required": false,
+      "minimum": 1,
+      "maximum": 90001
+    },
+    {
+      "name": "cropToBounds",
+      "json_type": "boolean",
+      "required": false
+    },
+    {
+      "name": "cropLeft",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 100000
+    },
+    {
+      "name": "cropTop",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 100000
+    },
+    {
+      "name": "cropRight",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 100000
+    },
+    {
+      "name": "cropBottom",
+      "json_type": "number",
+      "required": false,
+      "minimum": 0,
+      "maximum": 100000
+    }
+  ],
+  "bounds_types": [
+    "OBS_BOUNDS_NONE",
+    "OBS_BOUNDS_STRETCH",
+    "OBS_BOUNDS_SCALE_INNER",
+    "OBS_BOUNDS_SCALE_OUTER",
+    "OBS_BOUNDS_SCALE_TO_WIDTH",
+    "OBS_BOUNDS_SCALE_TO_HEIGHT",
+    "OBS_BOUNDS_MAX_ONLY"
+  ],
+  "native_defaults": [
+    {
+      "name": "none_readback_raw_zero",
+      "native_readback": {
+        "boundsType": "OBS_BOUNDS_NONE",
+        "boundsWidth": 0,
+        "boundsHeight": 0
+      },
+      "wire_rule": "omit boundsWidth and boundsHeight only"
+    },
+    {
+      "name": "omitted_fields_preserve_native",
+      "native_behavior": "omitted transform and crop properties retain the current native values"
+    },
+    {
+      "name": "item_properties_are_separate",
+      "native_behavior": "enabled, locked, and index use their own scene-item requests"
+    }
+  ],
+  "vectors": [
+    {
+      "name": "none_raw_zero_omit",
+      "kind": "resource_callback",
+      "resource": {
+        "enabled": true,
+        "locked": false,
+        "index": 0
+      },
+      "input_transform": {
+        "positionX": 40,
+        "positionY": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "alignment": 5,
+        "boundsType": "OBS_BOUNDS_NONE",
+        "boundsAlignment": 0,
+        "boundsWidth": 0,
+        "boundsHeight": 0,
+        "cropToBounds": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "cropRight": 0,
+        "cropBottom": 0
+      },
+      "expected": {
+        "request_order": [
+          "SetSceneItemTransform"
+        ],
+        "transform_omits": [
+          "boundsWidth",
+          "boundsHeight"
+        ],
+        "transform_includes": [
+          "positionX",
+          "positionY",
+          "scaleX",
+          "scaleY",
+          "rotation",
+          "alignment",
+          "boundsType",
+          "boundsAlignment",
+          "cropToBounds",
+          "cropLeft",
+          "cropTop",
+          "cropRight",
+          "cropBottom"
+        ],
+        "readback_bounds": {
+          "boundsType": "OBS_BOUNDS_NONE",
+          "boundsWidth": 0,
+          "boundsHeight": 0
+        }
+      }
+    },
+    {
+      "name": "none_positive_width_zero_height",
+      "kind": "resource_callback",
+      "resource": {
+        "enabled": true,
+        "locked": false,
+        "index": 0
+      },
+      "input_transform": {
+        "positionX": 40,
+        "positionY": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "alignment": 5,
+        "boundsType": "OBS_BOUNDS_NONE",
+        "boundsAlignment": 0,
+        "boundsWidth": 640,
+        "boundsHeight": 0,
+        "cropToBounds": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "cropRight": 0,
+        "cropBottom": 0
+      },
+      "expected": {
+        "request_order": [
+          "SetSceneItemTransform"
+        ],
+        "transform_includes": [
+          "boundsWidth"
+        ],
+        "transform_omits": [
+          "boundsHeight"
+        ],
+        "bounds_wire": {
+          "boundsType": "OBS_BOUNDS_NONE",
+          "boundsWidth": 640
+        }
+      }
+    },
+    {
+      "name": "none_zero_width_positive_height",
+      "kind": "resource_callback",
+      "resource": {
+        "enabled": true,
+        "locked": false,
+        "index": 0
+      },
+      "input_transform": {
+        "positionX": 40,
+        "positionY": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "alignment": 5,
+        "boundsType": "OBS_BOUNDS_NONE",
+        "boundsAlignment": 0,
+        "boundsWidth": 0,
+        "boundsHeight": 360,
+        "cropToBounds": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "cropRight": 0,
+        "cropBottom": 0
+      },
+      "expected": {
+        "request_order": [
+          "SetSceneItemTransform"
+        ],
+        "transform_includes": [
+          "boundsHeight"
+        ],
+        "transform_omits": [
+          "boundsWidth"
+        ],
+        "bounds_wire": {
+          "boundsType": "OBS_BOUNDS_NONE",
+          "boundsHeight": 360
+        }
+      }
+    },
+    {
+      "name": "none_enabled_false",
+      "kind": "resource_callback",
+      "resource": {
+        "enabled": true,
+        "locked": false,
+        "index": 0
+      },
+      "desired": {
+        "enabled": false
+      },
+      "input_transform": {
+        "positionX": 40,
+        "positionY": 0,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "alignment": 5,
+        "boundsType": "OBS_BOUNDS_NONE",
+        "boundsAlignment": 0,
+        "boundsWidth": 0,
+        "boundsHeight": 0,
+        "cropToBounds": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "cropRight": 0,
+        "cropBottom": 0
+      },
+      "expected": {
+        "request_order": [
+          "SetSceneItemEnabled",
+          "SetSceneItemTransform"
+        ],
+        "enabled_request": {
+          "sceneItemEnabled": false
+        },
+        "transform_omits": [
+          "boundsWidth",
+          "boundsHeight",
+          "sceneItemEnabled",
+          "sceneItemLocked",
+          "sceneItemIndex"
+        ],
+        "readback_bounds": {
+          "boundsType": "OBS_BOUNDS_NONE",
+          "boundsWidth": 0,
+          "boundsHeight": 0
+        }
+      }
+    },
+    {
+      "name": "bounded_positive",
+      "kind": "resource_callback",
+      "resource": {
+        "enabled": true,
+        "locked": false,
+        "index": 0
+      },
+      "input_transform": {
+        "positionX": 40,
+        "positionY": 12,
+        "scaleX": 1,
+        "scaleY": 1,
+        "rotation": 0,
+        "alignment": 5,
+        "boundsType": "OBS_BOUNDS_STRETCH",
+        "boundsAlignment": 0,
+        "boundsWidth": 640,
+        "boundsHeight": 360,
+        "cropToBounds": false,
+        "cropLeft": 0,
+        "cropTop": 0,
+        "cropRight": 0,
+        "cropBottom": 0
+      },
+      "expected": {
+        "request_order": [
+          "SetSceneItemTransform"
+        ],
+        "transform_includes": [
+          "boundsWidth",
+          "boundsHeight"
+        ],
+        "bounds_wire": {
+          "boundsType": "OBS_BOUNDS_STRETCH",
+          "boundsWidth": 640,
+          "boundsHeight": 360
+        }
+      }
+    },
+    {
+      "name": "bounded_minimum",
+      "kind": "protocol_acceptance",
+      "input_transform": {
+        "boundsType": "OBS_BOUNDS_STRETCH",
+        "boundsWidth": 1,
+        "boundsHeight": 1
+      },
+      "expected": {
+        "accepted": true,
+        "reason": "bounds dimensions use inclusive minimum 1"
+      }
+    },
+    {
+      "name": "bounded_zero_invalid",
+      "kind": "provider_and_protocol_rejection",
+      "input_transform": {
+        "boundsType": "OBS_BOUNDS_STRETCH",
+        "boundsWidth": 0,
+        "boundsHeight": 360
+      },
+      "expected": {
+        "accepted": false,
+        "provider_error": "placement bounds dimensions are invalid",
+        "protocol_reason": "boundsWidth is below the inclusive minimum 1"
+      }
+    },
+    {
+      "name": "omitted_preserves_native",
+      "kind": "protocol_acceptance",
+      "input_transform": {
+        "positionX": 40
+      },
+      "expected": {
+        "accepted": true,
+        "native_behavior": "all omitted transform and crop fields remain unchanged"
+      }
+    }
+  ],
+  "numeric_boundary_vectors": [
+    {
+      "field": "sceneItemId",
+      "json_type": "number",
+      "accepted": [
+        0
+      ],
+      "rejected": [
+        -1
+      ],
+      "resource_note": "provider group identity still requires a positive observed item ID"
+    },
+    {
+      "field": "positionX",
+      "json_type": "number",
+      "accepted": [
+        -90001,
+        90001
+      ],
+      "rejected": [
+        -90001.000001,
+        90001.000001
+      ]
+    },
+    {
+      "field": "positionY",
+      "json_type": "number",
+      "accepted": [
+        -90001,
+        90001
+      ],
+      "rejected": [
+        -90001.000001,
+        90001.000001
+      ]
+    },
+    {
+      "field": "rotation",
+      "json_type": "number",
+      "accepted": [
+        -360,
+        360
+      ],
+      "rejected": [
+        -360.000001,
+        360.000001
+      ]
+    },
+    {
+      "field": "alignment",
+      "json_type": "number",
+      "accepted": [
+        0,
+        4294967295
+      ],
+      "rejected": [
+        -1,
+        4294967296
+      ]
+    },
+    {
+      "field": "boundsAlignment",
+      "json_type": "number",
+      "accepted": [
+        0,
+        4294967295
+      ],
+      "rejected": [
+        -1,
+        4294967296
+      ]
+    },
+    {
+      "field": "boundsWidth",
+      "json_type": "number",
+      "accepted": [
+        1,
+        90001
+      ],
+      "rejected": [
+        0,
+        90002
+      ]
+    },
+    {
+      "field": "boundsHeight",
+      "json_type": "number",
+      "accepted": [
+        1,
+        90001
+      ],
+      "rejected": [
+        0,
+        90002
+      ]
+    },
+    {
+      "field": "cropLeft",
+      "json_type": "number",
+      "accepted": [
+        0,
+        100000
+      ],
+      "rejected": [
+        -1,
+        100001
+      ]
+    },
+    {
+      "field": "cropTop",
+      "json_type": "number",
+      "accepted": [
+        0,
+        100000
+      ],
+      "rejected": [
+        -1,
+        100001
+      ]
+    },
+    {
+      "field": "cropRight",
+      "json_type": "number",
+      "accepted": [
+        0,
+        100000
+      ],
+      "rejected": [
+        -1,
+        100001
+      ]
+    },
+    {
+      "field": "cropBottom",
+      "json_type": "number",
+      "accepted": [
+        0,
+        100000
+      ],
+      "rejected": [
+        -1,
+        100001
+      ]
+    }
+  ]
+}
