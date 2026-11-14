@@ -31,13 +31,18 @@ func usage() {
                                              new canvas: index | resources/<name> | guides/<slug>
   easel look <page|ex:name|mix> [--all]          step back; wets the canvas for 4 strokes
   easel stroke <page> <brush> [text] [--after ID | --first] [--level N] [--new]
-      brushes: line bullet step note warn heading row shell literal example schema roster
+      brushes: line bullet step note warn heading row shell literal example schema roster picture
   easel glaze <page> <attr.path> <text>      describe one attribute of the page's schema
   easel mix <attr.suffix> <text>             describe every undescribed attribute ending in that path
   easel scrape <page|ex:name|mix> <id>       remove one stroke (there is no edit)
   easel block <ex> <kind> [labels...]        example: terraform|provider|resource|locals|variable|output
   easel set <ex> <block> <path> <expr>       example: one attribute, checked against the schema
   easel remark <ex> <block> <text>           example: one comment line above a block
+  easel sketch <diagram> <title>             new diagram on a 5 by 4 grid
+  easel box <dg> <col> <row> <label> [--sub S] [--kind accent|soft] [--wide N]
+  easel arrow <dg> <from> <to> [label] [--dashed]
+  easel frame <dg> <col> <row> <cols> <rows> <label>
+                                             look and scrape take dg:<diagram>; the picture brush places one
   easel critique [page]                      what is still missing
   easel render                               write docs/ and examples/ from the canvases
   easel verify                               fail if docs/ or examples/ differ from the canvases
@@ -153,6 +158,26 @@ func main() {
 	case "remark":
 		need(3, "<example> <block> <text>")
 		exRemark(root, args[0], args[1], args[2])
+	case "sketch":
+		need(2, "<diagram> <title>")
+		sketch(root, mustPalette(root), args[0], args[1])
+	case "box":
+		rest, fl := flags(args)
+		args = rest
+		need(4, "<diagram> <col> <row> <label> [--sub S] [--kind accent|soft] [--wide N]")
+		addBox(root, mustPalette(root), args[0], args[1], args[2], args[3], fl)
+	case "arrow":
+		rest, fl := flags(args, "dashed")
+		args = rest
+		need(3, "<diagram> <from> <to> [label] [--dashed]")
+		text := ""
+		if len(args) > 3 {
+			text = args[3]
+		}
+		addArrow(root, mustPalette(root), args[0], args[1], args[2], text, fl["dashed"] != "")
+	case "frame":
+		need(6, "<diagram> <col> <row> <cols> <rows> <label>")
+		addFrame(root, mustPalette(root), args[0], args[1:5], args[5])
 	case "critique":
 		only := ""
 		if len(args) > 0 {

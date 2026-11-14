@@ -1,0 +1,98 @@
+{
+ "name": "a-verified-write",
+ "title": "What happens around every write",
+ "seq": 13,
+ "boxes": [
+  {
+   "id": "n1",
+   "col": 0,
+   "row": 0,
+   "label": "Check first",
+   "sub": "collection, canvas, outputs"
+  },
+  {
+   "id": "n2",
+   "col": 1,
+   "row": 0,
+   "label": "Write",
+   "sub": "one change at a time"
+  },
+  {
+   "id": "n3",
+   "col": 2,
+   "row": 0,
+   "label": "Read back",
+   "sub": "ask OBS what it holds"
+  },
+  {
+   "id": "n4",
+   "col": 3,
+   "row": 0,
+   "label": "Compare",
+   "sub": "every field that was set"
+  },
+  {
+   "id": "n5",
+   "col": 4,
+   "row": 0,
+   "label": "Done",
+   "sub": "reported to Terraform",
+   "kind": "accent"
+  },
+  {
+   "id": "n6",
+   "col": 0,
+   "row": 1,
+   "label": "Refuse",
+   "sub": "nothing was written",
+   "kind": "soft"
+  },
+  {
+   "id": "n7",
+   "col": 3,
+   "row": 1,
+   "label": "Fail and taint",
+   "sub": "next plan shows the truth",
+   "kind": "soft"
+  }
+ ],
+ "arrows": [
+  {
+   "id": "a8",
+   "from": "n1",
+   "to": "n2",
+   "label": "all clear"
+  },
+  {
+   "id": "a9",
+   "from": "n2",
+   "to": "n3"
+  },
+  {
+   "id": "a10",
+   "from": "n3",
+   "to": "n4"
+  },
+  {
+   "id": "a11",
+   "from": "n4",
+   "to": "n5",
+   "label": "match"
+  },
+  {
+   "id": "a12",
+   "from": "n1",
+   "to": "n6",
+   "label": "a check fails",
+   "dashed": true
+  },
+  {
+   "id": "a13",
+   "from": "n4",
+   "to": "n7",
+   "label": "no match",
+   "dashed": true
+  }
+ ],
+ "frames": null
+}

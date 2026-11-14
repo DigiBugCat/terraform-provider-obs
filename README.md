@@ -2,6 +2,8 @@
 
 `terraform-provider-obs` manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5 and, for the group operations that obs-websocket does not expose, through a small native plugin that ships in this repository. Every write is read back from OBS before it is reported as done, and the provider refuses to write while OBS is streaming or recording.
 
+![Terraform drives the obs provider, which reaches scenes and sources through obs-websocket and reaches groups through the native bridge plugin inside OBS Studio.](assets/diagrams/how-it-connects.svg)
+
 ## Documentation
 
 The full reference is on the Terraform Registry, starting at [the provider configuration](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs).
@@ -39,6 +41,18 @@ provider "obs" {
 - A base canvas of 1920x1080.
 - Terraform 1.5 or later.
 - The native bridge plugin from `native-bridge`, only for group resources, which today means macOS on Apple silicon.
+
+## How a Write Works
+
+Before it writes, the provider checks that the right scene collection is active, that the canvas is 1920x1080 and that nothing is streaming or recording. After it writes, it reads the object back and reports success only when every field matches.
+
+![A write passes a check, the write itself, a read back and a comparison, and ends as done, refused, or failed and tainted.](assets/diagrams/a-verified-write.svg)
+
+## Who Owns What
+
+A source resource owns the source and its first placement, called the anchor. Each further placement is an `obs_scene_item`, and one `obs_scene_contents` per scene declares the layer order.
+
+![One camera source is created with its first placement in the Office scene and reused by a second placement in the Gameplay scene.](assets/diagrams/who-owns-what.svg)
 
 ## Resources
 

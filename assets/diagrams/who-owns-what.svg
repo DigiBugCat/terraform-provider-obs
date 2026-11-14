@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 816 338" width="816" height="338" role="img" aria-label="Who owns what when a source appears twice" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2a3d"/></marker></defs>
+<rect width="816" height="338" fill="#ffffff"/>
+<text x="28" y="34" font-size="18" font-weight="600" fill="#1f2a3d">Who owns what when a source appears twice</text>
+<rect x="29" y="61" width="246" height="254" rx="12" fill="#fbf8f1" stroke="#c8b98f" stroke-width="1.5"/>
+<text x="41" y="79" font-size="12" font-weight="600" fill="#56627a">Scene: Office</text>
+<rect x="541" y="61" width="246" height="254" rx="12" fill="#fbf8f1" stroke="#c8b98f" stroke-width="1.5"/>
+<text x="553" y="79" font-size="12" font-weight="600" fill="#56627a">Scene: Gameplay</text>
+<line x1="317" y1="123" x2="245" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<rect x="251.9" y="102" width="58.2" height="18" rx="4" fill="#ffffff"/>
+<text x="281" y="115" font-size="12" text-anchor="middle" fill="#56627a">creates</text>
+<line x1="573" y1="123" x2="501" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<rect x="511.2" y="102" width="51.6" height="18" rx="4" fill="#ffffff"/>
+<text x="537" y="115" font-size="12" text-anchor="middle" fill="#56627a">reuses</text>
+<rect x="320" y="87" width="176" height="72" rx="9" fill="#2f4b7c" stroke="#2f4b7c" stroke-width="1.5"/>
+<text x="408" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#ffffff">Camera source</text>
+<text x="408" y="138" font-size="11.5" text-anchor="middle" fill="#dbe4f3">one obs_source</text>
+<rect x="64" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="152" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">First placement</text>
+<text x="152" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">the anchor, same obs_source</text>
+<rect x="576" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="664" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Second placement</text>
+<text x="664" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">one obs_scene_item</text>
+<rect x="64" y="217" width="176" height="72" rx="9" fill="#ffffff" stroke="#1f2a3d" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="152" y="249" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Layer order</text>
+<text x="152" y="268" font-size="11.5" text-anchor="middle" fill="#56627a">one obs_scene_contents</text>
+<rect x="576" y="217" width="176" height="72" rx="9" fill="#ffffff" stroke="#1f2a3d" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="664" y="249" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Layer order</text>
+<text x="664" y="268" font-size="11.5" text-anchor="middle" fill="#56627a">another obs_scene_contents</text>
+</svg>

@@ -250,6 +250,14 @@ func (r *renderer) page(c *canvas) string {
 		case "example":
 			blocks = append(blocks, "```terraform\n"+strings.TrimRight(r.exampleText(s.Text), "\n")+"\n```")
 			i++
+		case "picture":
+			name, alt, _ := strings.Cut(s.Text, " | ")
+			src := diagramFile(name) // the README sits beside the file; registry pages need a full address
+			if c.Page != "readme" {
+				src = "https://raw.githubusercontent.com/DigiBugCat/terraform-provider-obs/main/" + src
+			}
+			blocks = append(blocks, "!["+alt+"]("+src+")")
+			i++
 		case "schema":
 			blocks = append(blocks, r.schema(c, r.p.schemaFor(c.Page)))
 			i++
@@ -289,6 +297,9 @@ func render(root string, p *palette, write bool) int {
 	}
 	for _, e := range allExamples(root) {
 		out[exampleFile(e.Name)] = e.hcl()
+	}
+	for _, d := range allDiagrams(root) {
+		out[diagramFile(d.Name)] = d.svg()
 	}
 	diff := 0
 	paths := make([]string, 0, len(out))

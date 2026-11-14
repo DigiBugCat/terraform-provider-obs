@@ -1,0 +1,77 @@
+{
+ "name": "who-owns-what",
+ "title": "Who owns what when a source appears twice",
+ "seq": 18,
+ "boxes": [
+  {
+   "id": "n10",
+   "col": 1,
+   "row": 0,
+   "label": "Camera source",
+   "sub": "one obs_source",
+   "kind": "accent"
+  },
+  {
+   "id": "n11",
+   "col": 0,
+   "row": 0,
+   "label": "First placement",
+   "sub": "the anchor, same obs_source"
+  },
+  {
+   "id": "n12",
+   "col": 2,
+   "row": 0,
+   "label": "Second placement",
+   "sub": "one obs_scene_item"
+  },
+  {
+   "id": "n13",
+   "col": 0,
+   "row": 1,
+   "label": "Layer order",
+   "sub": "one obs_scene_contents",
+   "kind": "soft"
+  },
+  {
+   "id": "n14",
+   "col": 2,
+   "row": 1,
+   "label": "Layer order",
+   "sub": "another obs_scene_contents",
+   "kind": "soft"
+  }
+ ],
+ "arrows": [
+  {
+   "id": "a17",
+   "from": "n10",
+   "to": "n11",
+   "label": "creates"
+  },
+  {
+   "id": "a18",
+   "from": "n12",
+   "to": "n10",
+   "label": "reuses"
+  }
+ ],
+ "frames": [
+  {
+   "id": "f15",
+   "col": 0,
+   "row": 0,
+   "cols": 1,
+   "rows": 2,
+   "label": "Scene: Office"
+  },
+  {
+   "id": "f16",
+   "col": 2,
+   "row": 0,
+   "cols": 1,
+   "rows": 2,
+   "label": "Scene: Gameplay"
+  }
+ ]
+}

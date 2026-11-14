@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1328 338" width="1328" height="338" role="img" aria-label="How the provider reaches OBS" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2a3d"/></marker></defs>
+<rect width="1328" height="338" fill="#ffffff"/>
+<text x="28" y="34" font-size="18" font-weight="600" fill="#1f2a3d">How the provider reaches OBS</text>
+<rect x="797" y="61" width="502" height="254" rx="12" fill="#fbf8f1" stroke="#c8b98f" stroke-width="1.5"/>
+<text x="809" y="79" font-size="12" font-weight="600" fill="#56627a">OBS Studio</text>
+<line x1="243" y1="123" x2="315" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<line x1="499" y1="123" x2="571" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<line x1="755" y1="123" x2="827" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<rect x="758.6" y="102" width="64.8" height="18" rx="4" fill="#ffffff"/>
+<text x="791" y="115" font-size="12" text-anchor="middle" fill="#56627a">requests</text>
+<line x1="1011" y1="123" x2="1083" y2="123" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<line x1="737.6" y1="160.4" x2="844.6" y2="214.7" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<rect x="738.9" y="178.5" width="104.4" height="18" rx="4" fill="#ffffff"/>
+<text x="791.1" y="191.5" font-size="12" text-anchor="middle" fill="#56627a">group requests</text>
+<line x1="1011" y1="253" x2="1083" y2="253" stroke="#1f2a3d" stroke-width="1.8" marker-end="url(#head)"/>
+<rect x="64" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="152" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Your configuration</text>
+<text x="152" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">the show you want</text>
+<rect x="320" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="408" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Terraform</text>
+<text x="408" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">plan and apply</text>
+<rect x="576" y="87" width="176" height="72" rx="9" fill="#2f4b7c" stroke="#2f4b7c" stroke-width="1.5"/>
+<text x="664" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#ffffff">obs provider</text>
+<text x="664" y="138" font-size="11.5" text-anchor="middle" fill="#dbe4f3">checks every write</text>
+<rect x="832" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="920" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">obs-websocket 5</text>
+<text x="920" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">built into OBS</text>
+<rect x="1088" y="87" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="1176" y="119" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Scenes and sources</text>
+<text x="1176" y="138" font-size="11.5" text-anchor="middle" fill="#56627a">filters and placements</text>
+<rect x="832" y="217" width="176" height="72" rx="9" fill="#ffffff" stroke="#1f2a3d" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="920" y="249" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Native bridge</text>
+<text x="920" y="268" font-size="11.5" text-anchor="middle" fill="#56627a">plugin from this repository</text>
+<rect x="1088" y="217" width="176" height="72" rx="9" fill="#f1f4f9" stroke="#1f2a3d" stroke-width="1.5"/>
+<text x="1176" y="249" font-size="14" font-weight="600" text-anchor="middle" fill="#1f2a3d">Groups</text>
+<text x="1176" y="268" font-size="11.5" text-anchor="middle" fill="#56627a">and what is inside them</text>
+</svg>

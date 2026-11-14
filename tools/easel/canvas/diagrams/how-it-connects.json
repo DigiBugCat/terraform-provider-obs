@@ -1,0 +1,102 @@
+{
+ "name": "how-it-connects",
+ "title": "How the provider reaches OBS",
+ "seq": 14,
+ "boxes": [
+  {
+   "id": "n1",
+   "col": 0,
+   "row": 0,
+   "label": "Your configuration",
+   "sub": "the show you want"
+  },
+  {
+   "id": "n2",
+   "col": 1,
+   "row": 0,
+   "label": "Terraform",
+   "sub": "plan and apply"
+  },
+  {
+   "id": "n3",
+   "col": 2,
+   "row": 0,
+   "label": "obs provider",
+   "sub": "checks every write",
+   "kind": "accent"
+  },
+  {
+   "id": "n4",
+   "col": 3,
+   "row": 0,
+   "label": "obs-websocket 5",
+   "sub": "built into OBS"
+  },
+  {
+   "id": "n5",
+   "col": 4,
+   "row": 0,
+   "label": "Scenes and sources",
+   "sub": "filters and placements"
+  },
+  {
+   "id": "n6",
+   "col": 3,
+   "row": 1,
+   "label": "Native bridge",
+   "sub": "plugin from this repository",
+   "kind": "soft"
+  },
+  {
+   "id": "n7",
+   "col": 4,
+   "row": 1,
+   "label": "Groups",
+   "sub": "and what is inside them"
+  }
+ ],
+ "arrows": [
+  {
+   "id": "a9",
+   "from": "n1",
+   "to": "n2"
+  },
+  {
+   "id": "a10",
+   "from": "n2",
+   "to": "n3"
+  },
+  {
+   "id": "a11",
+   "from": "n3",
+   "to": "n4",
+   "label": "requests"
+  },
+  {
+   "id": "a12",
+   "from": "n4",
+   "to": "n5"
+  },
+  {
+   "id": "a13",
+   "from": "n3",
+   "to": "n6",
+   "label": "group requests"
+  },
+  {
+   "id": "a14",
+   "from": "n6",
+   "to": "n7"
+  }
+ ],
+ "frames": [
+  {
+   "id": "f8",
+   "col": 3,
+   "row": 0,
+   "cols": 2,
+   "rows": 2,
+   "label": "OBS Studio"
+  }
+ ]
+}

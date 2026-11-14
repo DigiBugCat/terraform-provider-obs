@@ -85,7 +85,7 @@ func allCanvases(root string) []*canvas {
 	base := canvasDir(root)
 	filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() || filepath.Ext(path) != ".json" || strings.HasPrefix(info.Name(), "_") {
-			if err == nil && info.IsDir() && info.Name() == "examples" {
+			if err == nil && info.IsDir() && (info.Name() == "examples" || info.Name() == "diagrams") {
 				return filepath.SkipDir
 			}
 			return nil
@@ -157,6 +157,11 @@ func look(root, target string, all bool) {
 	}
 	if target == "mix" {
 		lookMixes(root)
+		wet(root, target)
+		return
+	}
+	if name, ok := strings.CutPrefix(target, "dg:"); ok {
+		dgLook(root, name)
 		wet(root, target)
 		return
 	}
@@ -325,6 +330,19 @@ func stroke(root string, p *palette, page, brush, text string, fl map[string]str
 		} else {
 			die("an example stroke is ex:<composed name> or file:examples/<path>")
 		}
+	case "picture":
+		// "<diagram> | <one sentence saying what the picture shows>"
+		name, alt, ok := strings.Cut(text, " | ")
+		if !ok {
+			die("a picture stroke is: <diagram> | <sentence describing it>")
+		}
+		if _, err := os.Stat(diagramPath(root, name)); err != nil {
+			die("no diagram %q", name)
+		}
+		sentence(p, alt, 30)
+		if strings.ContainsAny(alt, "`[]") {
+			die("the description of a picture is plain words")
+		}
 	case "schema":
 		if text != "" || p.schemaFor(page) == nil || count("schema") > 0 {
 			die("the schema brush takes no text, once, on index or a resource page")
@@ -387,6 +405,10 @@ func glaze(root string, p *palette, page, path, text string) {
 func scrape(root, target, id string) {
 	if name, ok := strings.CutPrefix(target, "ex:"); ok {
 		exScrape(root, name, id)
+		return
+	}
+	if name, ok := strings.CutPrefix(target, "dg:"); ok {
+		dgScrape(root, name, id)
 		return
 	}
 	if target == "mix" {
