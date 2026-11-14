@@ -1,0 +1,57 @@
+{
+ "page": "resources/input",
+ "subcategory": "Sources",
+ "seq": 9,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one image source, with typed attributes for its file, and its first placement in a scene."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "It is the typed form of @resources/source for the `image_source` kind: the provider checks the file before it writes."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "example",
+   "text": "ex:resources/obs_input"
+  },
+  {
+   "id": "s5",
+   "brush": "schema"
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "line",
+   "text": "Import by collection name, source UUID, anchor scene UUID and anchor scene item ID, separated by pipe characters:"
+  },
+  {
+   "id": "s8",
+   "brush": "literal",
+   "text": "collection|input_uuid|anchor_scene_uuid|anchor_item_id"
+  },
+  {
+   "id": "s9",
+   "brush": "shell",
+   "text": "terraform import obs_input.logo 'My Show|SOURCE-UUID|SCENE-UUID|7'"
+  }
+ ],
+ "glazes": {
+  "kind": "Must be `image_source`.",
+  "name": "Name of the source as shown in OBS. Changing it replaces the resource."
+ }
+}

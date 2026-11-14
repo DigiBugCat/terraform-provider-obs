@@ -1,0 +1,69 @@
+{
+ "name": "resources/obs_plugin",
+ "seq": 3,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "variable",
+   "labels": [
+    "manifest_path"
+   ],
+   "attrs": [
+    {
+     "path": "type",
+     "expr": "string"
+    },
+    {
+     "path": "description",
+     "expr": "\"Absolute path of the reviewed plugin manifest.\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "variable",
+   "labels": [
+    "manifest_sha256"
+   ],
+   "attrs": [
+    {
+     "path": "type",
+     "expr": "string"
+    },
+    {
+     "path": "description",
+     "expr": "\"SHA-256 of the manifest, written out by hand so that a changed manifest is a deliberate change.\""
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "kind": "resource",
+   "labels": [
+    "obs_plugin",
+    "move"
+   ],
+   "remark": [
+    "Apply this while OBS is closed, then start OBS before applying sources and filters."
+   ],
+   "attrs": [
+    {
+     "path": "manifest_path",
+     "expr": "var.manifest_path"
+    },
+    {
+     "path": "manifest_sha256",
+     "expr": "var.manifest_sha256"
+    },
+    {
+     "path": "plugin_id",
+     "expr": "\"move\""
+    },
+    {
+     "path": "version",
+     "expr": "\"3.2.1\""
+    }
+   ]
+  }
+ ]
+}

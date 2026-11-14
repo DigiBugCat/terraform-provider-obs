@@ -1,0 +1,212 @@
+{
+ "name": "resources/obs_group_graph",
+ "seq": 4,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "variable",
+   "labels": [
+    "asset_directory"
+   ],
+   "attrs": [
+    {
+     "path": "type",
+     "expr": "string"
+    },
+    {
+     "path": "description",
+     "expr": "\"Absolute directory that holds the light images on the machine running OBS.\""
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "kind": "locals",
+   "remark": [
+    "One placement shared by the group and its children."
+   ],
+   "attrs": [
+    {
+     "path": "placement.enabled",
+     "expr": "true"
+    },
+    {
+     "path": "placement.locked",
+     "expr": "false"
+    },
+    {
+     "path": "placement.index",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "placement.transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "placement.transform.bounds_alignment",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_width",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_height",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_to_bounds",
+     "expr": "false"
+    }
+   ]
+  },
+  {
+   "id": "b4",
+   "kind": "resource",
+   "labels": [
+    "obs_group_graph",
+    "lights"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "name",
+     "expr": "\"Party Lights\""
+    },
+    {
+     "path": "parent_present",
+     "expr": "true"
+    },
+    {
+     "path": "parent_placement",
+     "expr": "local.placement"
+    },
+    {
+     "path": "children.0.stable_key",
+     "expr": "\"left\""
+    },
+    {
+     "path": "children.0.name",
+     "expr": "\"Party Light Left\""
+    },
+    {
+     "path": "children.0.kind",
+     "expr": "\"image_source\""
+    },
+    {
+     "path": "children.0.file",
+     "expr": "\"${var.asset_directory}/light-left.png\""
+    },
+    {
+     "path": "children.0.unload",
+     "expr": "false"
+    },
+    {
+     "path": "children.0.present",
+     "expr": "true"
+    },
+    {
+     "path": "children.0.placement",
+     "expr": "local.placement"
+    },
+    {
+     "path": "children.1.stable_key",
+     "expr": "\"right\""
+    },
+    {
+     "path": "children.1.name",
+     "expr": "\"Party Light Right\""
+    },
+    {
+     "path": "children.1.kind",
+     "expr": "\"image_source\""
+    },
+    {
+     "path": "children.1.file",
+     "expr": "\"${var.asset_directory}/light-right.png\""
+    },
+    {
+     "path": "children.1.unload",
+     "expr": "false"
+    },
+    {
+     "path": "children.1.present",
+     "expr": "true"
+    },
+    {
+     "path": "children.1.placement",
+     "expr": "merge(local.placement, { index = 1, transform = merge(local.placement.transform, { x = 960 }) })"
+    }
+   ]
+  }
+ ]
+}

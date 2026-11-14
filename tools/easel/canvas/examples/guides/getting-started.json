@@ -1,0 +1,200 @@
+{
+ "name": "guides/getting-started",
+ "seq": 7,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "terraform"
+  },
+  {
+   "id": "b2",
+   "kind": "provider"
+  },
+  {
+   "id": "b3",
+   "kind": "locals",
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    }
+   ]
+  },
+  {
+   "id": "b4",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "local.collection"
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b5",
+   "kind": "resource",
+   "labels": [
+    "obs_source",
+    "background"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "local.collection"
+    },
+    {
+     "path": "name",
+     "expr": "\"Background\""
+    },
+    {
+     "path": "kind",
+     "expr": "\"color_source_v3\""
+    },
+    {
+     "path": "settings_json",
+     "expr": "jsonencode({ color = 4283782485, width = 1920, height = 1080 })"
+    },
+    {
+     "path": "anchor_scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "anchor_scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "anchor_enabled",
+     "expr": "true"
+    },
+    {
+     "path": "anchor_index",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "anchor_transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "anchor_transform.bounds_alignment",
+     "expr": "0"
+    }
+   ]
+  },
+  {
+   "id": "b6",
+   "kind": "resource",
+   "labels": [
+    "obs_filter",
+    "background_color"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "local.collection"
+    },
+    {
+     "path": "parent_name",
+     "expr": "obs_source.background.name"
+    },
+    {
+     "path": "parent_uuid",
+     "expr": "obs_source.background.input_uuid"
+    },
+    {
+     "path": "name",
+     "expr": "\"Color Correction\""
+    },
+    {
+     "path": "kind",
+     "expr": "\"color_filter_v2\""
+    },
+    {
+     "path": "enabled",
+     "expr": "true"
+    },
+    {
+     "path": "index",
+     "expr": "0"
+    },
+    {
+     "path": "settings_json",
+     "expr": "jsonencode({ saturation = 0.1 })"
+    }
+   ]
+  },
+  {
+   "id": "b7",
+   "kind": "resource",
+   "labels": [
+    "obs_scene_contents",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "local.collection"
+    },
+    {
+     "path": "scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "item_ids",
+     "expr": "[obs_source.background.anchor_item_id]"
+    }
+   ]
+  }
+ ]
+}

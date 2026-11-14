@@ -1,0 +1,154 @@
+{
+ "page": "guides/groups",
+ "title": "Groups and the Native Bridge",
+ "seq": 28,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "obs-websocket cannot create a group or place a source directly inside one."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "The provider does both through the native bridge, a small OBS plugin that ships in the provider repository."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "What the Bridge Does",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "The bridge adds group requests to obs-websocket as vendor requests under the vendor name `obstf`."
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "The provider checks the version and capabilities of the bridge before every group write."
+  },
+  {
+   "id": "s6",
+   "brush": "line",
+   "text": "After each request the bridge verifies the result inside OBS, and the provider accepts only a verified outcome."
+  },
+  {
+   "id": "s7",
+   "brush": "heading",
+   "text": "Requirements",
+   "level": 2
+  },
+  {
+   "id": "s8",
+   "brush": "bullet",
+   "text": "OBS Studio 32.2.2 with obs-websocket 5.7.4, because the group resources refuse any other version."
+  },
+  {
+   "id": "s9",
+   "brush": "bullet",
+   "text": "A base canvas of 1920x1080."
+  },
+  {
+   "id": "s10",
+   "brush": "bullet",
+   "text": "A scene collection in absolute coordinate mode, which is what @resources/collection_seed creates."
+  },
+  {
+   "id": "s11",
+   "brush": "bullet",
+   "text": "macOS on Apple silicon, the only platform the bridge is built for today."
+  },
+  {
+   "id": "s12",
+   "brush": "warn",
+   "text": "Groups are not available on Windows or Linux yet; scenes, sources, filters and placements outside groups do not need the bridge."
+  },
+  {
+   "id": "s13",
+   "brush": "heading",
+   "text": "Installing the Bridge",
+   "level": 2
+  },
+  {
+   "id": "s14",
+   "brush": "line",
+   "text": "Build the plugin from the provider repository:"
+  },
+  {
+   "id": "s15",
+   "brush": "shell",
+   "text": "git clone https://github.com/DigiBugCat/terraform-provider-obs"
+  },
+  {
+   "id": "s16",
+   "brush": "shell",
+   "text": "make -C terraform-provider-obs/native-bridge build"
+  },
+  {
+   "id": "s17",
+   "brush": "line",
+   "text": "Install the built bundle while OBS is closed, either by copying it into the OBS plugin folder or with @resources/plugin and a manifest that pins it.",
+   "new": true
+  },
+  {
+   "id": "s18",
+   "brush": "line",
+   "text": "Start OBS afterwards, because a plugin is loaded only at startup."
+  },
+  {
+   "id": "s19",
+   "brush": "heading",
+   "text": "Choosing Group Resources",
+   "level": 2
+  },
+  {
+   "id": "s20",
+   "brush": "bullet",
+   "text": "@resources/group with @resources/group_source or @resources/group_input gives every child its own resource and its own line in the plan."
+  },
+  {
+   "id": "s21",
+   "brush": "bullet",
+   "text": "@resources/group_graph manages a group and its image children as one unit and repairs the group as a whole."
+  },
+  {
+   "id": "s22",
+   "brush": "line",
+   "text": "Pick one model for each group and do not mix them."
+  },
+  {
+   "id": "s23",
+   "brush": "heading",
+   "text": "Existing Sources in a Group",
+   "level": 2
+  },
+  {
+   "id": "s24",
+   "brush": "line",
+   "text": "@resources/scene_item with `parent_kind` set to `group` places a source that already exists into a group."
+  },
+  {
+   "id": "s25",
+   "brush": "line",
+   "text": "@resources/scene_contents with the same setting declares the complete contents of a group."
+  },
+  {
+   "id": "s26",
+   "brush": "heading",
+   "text": "Coordinates",
+   "level": 2
+  },
+  {
+   "id": "s27",
+   "brush": "line",
+   "text": "Positions of group children are measured from the top-left corner of the group, not of the canvas."
+  },
+  {
+   "id": "s28",
+   "brush": "line",
+   "text": "The group reports its own size in `observed_group_width` and `observed_group_height`."
+  }
+ ]
+}

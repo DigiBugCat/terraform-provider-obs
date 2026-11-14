@@ -1,0 +1,64 @@
+{
+ "page": "resources/group_source",
+ "subcategory": "Groups",
+ "seq": 10,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one input of any installed kind that is created directly inside a group, with its placement there."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "It is the group counterpart of @resources/source: the same `settings_json` rules apply, and the placement inside the group takes the role of the anchor."
+  },
+  {
+   "id": "s3",
+   "brush": "note",
+   "text": "Group resources need the native bridge plugin loaded in OBS; see @guides/groups."
+  },
+  {
+   "id": "s4",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s5",
+   "brush": "example",
+   "text": "ex:resources/obs_group_source"
+  },
+  {
+   "id": "s6",
+   "brush": "schema"
+  },
+  {
+   "id": "s7",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s8",
+   "brush": "line",
+   "text": "Import by collection name, scene UUID, group UUID, group scene item ID, source UUID and child scene item ID, separated by pipe characters:"
+  },
+  {
+   "id": "s9",
+   "brush": "literal",
+   "text": "collection|scene_uuid|group_uuid|group_item_id|input_uuid|item_id"
+  },
+  {
+   "id": "s10",
+   "brush": "shell",
+   "text": "terraform import obs_group_source.glow 'My Show|SCENE-UUID|GROUP-UUID|4|SOURCE-UUID|9'"
+  }
+ ],
+ "glazes": {
+  "item_id": "Scene item ID that OBS assigned to the placement inside the group.",
+  "kind": "OBS input kind, for example `color_source_v3`. It must be a kind the running OBS has registered. Changing it replaces the resource.",
+  "name": "Name of the source as shown in OBS. Changing it replaces the resource.",
+  "placement": "Visibility, lock state, order and transform of the source inside the group. Positions are measured from the top-left corner of the group."
+ }
+}

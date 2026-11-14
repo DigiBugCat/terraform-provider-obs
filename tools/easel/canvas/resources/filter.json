@@ -1,0 +1,74 @@
+{
+ "page": "resources/filter",
+ "subcategory": "Filters",
+ "seq": 12,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one filter of any installed kind on a source, scene or group, with the settings you choose to manage."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "OBS has no filter UUID, so a filter is identified by its parent UUID together with its name."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Only one resource may own a given parent and filter name; do not declare this resource over a filter that a typed filter resource manages."
+  },
+  {
+   "id": "s4",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s5",
+   "brush": "example",
+   "text": "ex:resources/obs_filter"
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Managed Settings",
+   "level": 3
+  },
+  {
+   "id": "s7",
+   "brush": "line",
+   "text": "The `settings_json` object owns exactly its top-level keys, with the same rules as @resources/source."
+  },
+  {
+   "id": "s8",
+   "brush": "line",
+   "text": "OBS creates every filter enabled and the provider then sets the declared state, so a plugin may briefly see a filter enabled that is declared with `enabled` false."
+  },
+  {
+   "id": "s9",
+   "brush": "schema"
+  },
+  {
+   "id": "s10",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s11",
+   "brush": "line",
+   "text": "Import with a JSON object that names the collection, parent UUID, parent name, filter name, kind and the settings to manage:"
+  },
+  {
+   "id": "s12",
+   "brush": "shell",
+   "text": "terraform import obs_filter.sharpen '{\"collection\":\"My Show\",\"parent_uuid\":\"SOURCE-UUID\",\"parent_name\":\"Camera\",\"name\":\"Sharpen\",\"kind\":\"sharpness_filter_v2\",\"settings\":{\"sharpness\":0.2}}'"
+  }
+ ],
+ "glazes": {
+  "kind": "OBS filter kind, for example `color_filter_v2`. It must be a kind the running OBS has registered. Changing it replaces the resource.",
+  "name": "Name of the filter as shown in OBS. Changing it replaces the resource.",
+  "settings_json": "JSON object of managed top-level settings. Writes overlay these keys; omitted keys retain OBS values. Nested objects are managed as whole values."
+ }
+}

@@ -1,0 +1,120 @@
+{
+ "page": "resources/group_graph",
+ "subcategory": "Groups",
+ "seq": 16,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages a whole group as one resource: the group, its placement in the scene, and an ordered list of image children with their placements."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Because the group is one resource, the provider repairs it as a unit: a child deleted in OBS is recreated in place without disturbing its siblings."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Use it when a group must always be complete, and never manage the same group with @resources/group as well."
+  },
+  {
+   "id": "s4",
+   "brush": "note",
+   "text": "Group resources need the native bridge plugin loaded in OBS; see @guides/groups."
+  },
+  {
+   "id": "s5",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s6",
+   "brush": "example",
+   "text": "ex:resources/obs_group_graph"
+  },
+  {
+   "id": "s7",
+   "brush": "heading",
+   "text": "Rules for Children",
+   "level": 3
+  },
+  {
+   "id": "s8",
+   "brush": "bullet",
+   "text": "Every child is an `image_source` with an absolute `file`."
+  },
+  {
+   "id": "s9",
+   "brush": "bullet",
+   "text": "Each child has a `stable_key`, the identity Terraform tracks it by, which must match `[a-z0-9_-]+` and be unique in the group."
+  },
+  {
+   "id": "s10",
+   "brush": "bullet",
+   "text": "The `index` in each child placement must equal the position of the child in the `children` list."
+  },
+  {
+   "id": "s11",
+   "brush": "bullet",
+   "text": "Renaming the group, changing the key, name or kind of an existing child, and removing a child are rejected at plan time."
+  },
+  {
+   "id": "s12",
+   "brush": "schema"
+  },
+  {
+   "id": "s13",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s16",
+   "brush": "line",
+   "text": "Import by collection name, scene UUID, group UUID and group scene item ID, followed by one binding for each child:"
+  },
+  {
+   "id": "s14",
+   "brush": "literal",
+   "text": "collection|scene_uuid|group_uuid|parent_item_id|stable_key=source_uuid:item_id,..."
+  },
+  {
+   "id": "s15",
+   "brush": "shell",
+   "text": "terraform import obs_group_graph.lights 'My Show|SCENE-UUID|GROUP-UUID|4|left=LEFT-UUID:9,right=RIGHT-UUID:10'"
+  }
+ ],
+ "glazes": {
+  "children": "Ordered list of the sources inside the group, bottom layer first. At least one child is required.",
+  "children.item_id": "Scene item ID that OBS assigned to the child inside the group.",
+  "children.kind": "Must be `image_source`.",
+  "children.name": "Name of the child source as shown in OBS. It must be unique in the group and cannot change once the child exists.",
+  "children.placement": "Visibility, lock state, order and transform of the child inside the group. Positions are measured from the top-left corner of the group.",
+  "children.present": "Must be `true`: every declared child exists.",
+  "children.source_uuid": "UUID that OBS assigned to the child source.",
+  "children.stable_key": "Identity of the child in Terraform, matching `[a-z0-9_-]+`. It cannot change once the child exists.",
+  "group_uuid": "UUID that OBS assigned to the group.",
+  "name": "Name of the group as shown in OBS. A rename is rejected at plan time.",
+  "observed_children": "The children as OBS reported them at the last read, including any that are missing.",
+  "observed_children.height": "Height in pixels that OBS reported for the child source.",
+  "observed_children.item_id": "Scene item ID of the child that OBS reported.",
+  "observed_children.kind": "Kind of the child source that OBS reported.",
+  "observed_children.name": "Name of the child source that OBS reported.",
+  "observed_children.present": "Whether the child existed in the group at the last read.",
+  "observed_children.source_uuid": "UUID of the child source that OBS reported.",
+  "observed_children.stable_key": "Key of the declared child this observation belongs to.",
+  "observed_children.width": "Width in pixels that OBS reported for the child source.",
+  "observed_complete": "Whether the last read found the group, its placement and every declared child.",
+  "observed_parent": "The group placement as OBS reported it at the last read.",
+  "observed_parent.present": "Whether the group was placed in its scene at the last read.",
+  "parent_item_id": "Scene item ID of the group in its scene. Reference it from `item_ids` of @resources/scene_contents.",
+  "parent_placement": "Visibility, lock state, order and transform of the group in its scene.",
+  "parent_placement.enabled": "Whether the group is visible in its scene.",
+  "parent_placement.index": "Zero-based position of the group in its scene, counted from the bottom layer up.",
+  "parent_placement.locked": "Whether the group is locked against editing in the OBS interface.",
+  "parent_present": "Must be `true`: the group is always placed in its scene.",
+  "repair_nonce": "Marker that becomes unknown in a plan when the group needs repair, so that the repair shows up as a change."
+ }
+}

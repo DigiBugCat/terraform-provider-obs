@@ -1,0 +1,132 @@
+{
+ "page": "guides/verified-writes",
+ "title": "How Writes Are Verified",
+ "seq": 24,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "The provider treats OBS as a live system that people and other tools also change."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Every write is guarded before it starts and checked after it finishes."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Before a Write",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Before the first write of each operation the provider reads the OBS version, the active scene collection, the base canvas and the state of every output."
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "It refuses to continue when any of these is true:"
+  },
+  {
+   "id": "s6",
+   "brush": "bullet",
+   "text": "OBS has a scene collection active other than the `collection` of the resource."
+  },
+  {
+   "id": "s7",
+   "brush": "bullet",
+   "text": "The base canvas is not 1920x1080."
+  },
+  {
+   "id": "s8",
+   "brush": "bullet",
+   "text": "The stream, a recording, the virtual camera or the replay buffer is active."
+  },
+  {
+   "id": "s9",
+   "brush": "bullet",
+   "text": "The running OBS does not offer the request that the write needs."
+  },
+  {
+   "id": "s10",
+   "brush": "heading",
+   "text": "After a Write",
+   "level": 2
+  },
+  {
+   "id": "s11",
+   "brush": "line",
+   "text": "After each write the provider reads the object back and compares every field it set."
+  },
+  {
+   "id": "s12",
+   "brush": "line",
+   "text": "An acknowledgement from OBS is not treated as success until the readback agrees."
+  },
+  {
+   "id": "s13",
+   "brush": "line",
+   "text": "When the readback does not match, the operation fails and Terraform marks the resource as tainted, so the next plan starts from what OBS really holds."
+  },
+  {
+   "id": "s14",
+   "brush": "heading",
+   "text": "One Writer at a Time",
+   "level": 2
+  },
+  {
+   "id": "s15",
+   "brush": "line",
+   "text": "Writes run one at a time, and a read never overlaps a write from the same provider."
+  },
+  {
+   "id": "s16",
+   "brush": "line",
+   "text": "Reads run concurrently over a pool of persistent connections."
+  },
+  {
+   "id": "s17",
+   "brush": "heading",
+   "text": "Settings That Affect Speed",
+   "level": 2
+  },
+  {
+   "id": "s18",
+   "brush": "bullet",
+   "text": "`connections` sets the size of the read pool and defaults to 10; the `OBS_CONNECTIONS` environment variable sets it too."
+  },
+  {
+   "id": "s19",
+   "brush": "bullet",
+   "text": "`read_cache_ms` reuses list responses across reads; it is experimental, defaults to 0, and hides an edit made in OBS for that long."
+  },
+  {
+   "id": "s20",
+   "brush": "bullet",
+   "text": "`concurrent_mutations` runs writes to different scenes, groups and sources at once; it is experimental and off by default."
+  },
+  {
+   "id": "s21",
+   "brush": "heading",
+   "text": "What Destroy Leaves Behind",
+   "level": 2
+  },
+  {
+   "id": "s22",
+   "brush": "bullet",
+   "text": "Destroying @resources/plugin leaves the plugin files installed."
+  },
+  {
+   "id": "s23",
+   "brush": "bullet",
+   "text": "Destroying @resources/collection_seed leaves the collection file and its scenes."
+  },
+  {
+   "id": "s24",
+   "brush": "bullet",
+   "text": "Destroying @resources/scene_contents leaves every placement where it is."
+  }
+ ]
+}

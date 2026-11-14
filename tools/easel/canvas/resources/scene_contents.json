@@ -1,0 +1,53 @@
+{
+ "page": "resources/scene_contents",
+ "subcategory": "Scenes and placements",
+ "seq": 8,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Declares the complete, ordered list of placements in one scene or group."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "On apply the provider removes every placement that is not in the list and puts the rest in the declared order."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "A source that is also placed in another scene keeps its other placements."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Use exactly one of these per container, and none for a container whose contents people arrange by hand.",
+   "new": true
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "Destroying the resource ends the contract and leaves every placement where it is."
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "example",
+   "text": "ex:resources/obs_scene_contents"
+  },
+  {
+   "id": "s8",
+   "brush": "schema"
+  }
+ ],
+ "glazes": {
+  "parent_kind": "Container type, `scene` or `group`. Defaults to `scene`. Changing it replaces the resource.",
+  "scene_name": "Name of the scene, or of the group when `parent_kind` is `group`, whose contents are declared. Changing it replaces the resource.",
+  "scene_uuid": "UUID of the scene or group whose contents are declared. Changing it replaces the resource."
+ }
+}

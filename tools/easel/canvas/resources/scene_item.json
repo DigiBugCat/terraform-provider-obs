@@ -1,0 +1,94 @@
+{
+ "page": "resources/scene_item",
+ "subcategory": "Scenes and placements",
+ "seq": 15,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one additional placement of an existing source in a scene or group: its visibility, stacking position and transform."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "A source resource already owns its first placement, the anchor, so use this resource only for the second and later places the same source appears."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Both placements show the same source, and a change to the source settings is seen in every scene that places it."
+  },
+  {
+   "id": "s4",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s5",
+   "brush": "example",
+   "text": "ex:resources/obs_scene_item"
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Placing a Source in a Group",
+   "level": 3
+  },
+  {
+   "id": "s7",
+   "brush": "line",
+   "text": "Set `parent_kind` to `group` and pass the name and UUID of the group in `scene_name` and `scene_uuid`."
+  },
+  {
+   "id": "s8",
+   "brush": "line",
+   "text": "The group must already exist and must have exactly one placement in a scene."
+  },
+  {
+   "id": "s9",
+   "brush": "note",
+   "text": "Never declare an `obs_scene_item` for the anchor of a source, because two resources would then own one placement."
+  },
+  {
+   "id": "s10",
+   "brush": "schema"
+  },
+  {
+   "id": "s11",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s12",
+   "brush": "line",
+   "text": "Import a placement by collection name, container UUID, source UUID and scene item ID, separated by pipe characters:"
+  },
+  {
+   "id": "s13",
+   "brush": "literal",
+   "text": "collection|scene_uuid|source_uuid|item_id"
+  },
+  {
+   "id": "s14",
+   "brush": "line",
+   "text": "Append `|group` when the container is a group.",
+   "new": true
+  },
+  {
+   "id": "s15",
+   "brush": "shell",
+   "text": "terraform import obs_scene_item.camera_in_gameplay 'My Show|SCENE-UUID|SOURCE-UUID|12'"
+  }
+ ],
+ "glazes": {
+  "enabled": "Whether the placement is visible.",
+  "index": "Zero-based position in the scene or group, counted from the bottom layer up. A placement created before its lower siblings exist is placed last and moves once they do.",
+  "item_id": "Scene item ID that OBS assigned to this placement. Reference it from `item_ids` of @resources/scene_contents.",
+  "scene_name": "Name of the scene, or of the group when `parent_kind` is `group`, that receives the placement. It follows a rename.",
+  "scene_uuid": "UUID of the scene or group that receives the placement. Changing it replaces the resource.",
+  "source_name": "Name of the source to place. It follows a rename of the source.",
+  "source_uuid": "UUID of the source to place, for example `input_uuid` of @resources/source. Changing it replaces the resource."
+ }
+}

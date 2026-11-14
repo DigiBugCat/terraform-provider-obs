@@ -1,0 +1,68 @@
+{
+ "page": "resources/scene",
+ "subcategory": "Scenes",
+ "seq": 14,
+ "strokes": [
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Manages one scene in an OBS scene collection."
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "The scene is tracked by the UUID that OBS assigns, so changing `name` renames the same scene in place and every placement inside it survives."
+  },
+  {
+   "id": "s6",
+   "brush": "line",
+   "text": "Destroying the resource removes the scene and the placements it contains."
+  },
+  {
+   "id": "s7",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s8",
+   "brush": "example",
+   "text": "ex:resources/obs_scene"
+  },
+  {
+   "id": "s9",
+   "brush": "schema"
+  },
+  {
+   "id": "s10",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s11",
+   "brush": "line",
+   "text": "Import a scene by its collection name and scene UUID, separated by a pipe character:"
+  },
+  {
+   "id": "s12",
+   "brush": "literal",
+   "text": "collection|scene_uuid"
+  },
+  {
+   "id": "s13",
+   "brush": "shell",
+   "text": "terraform import obs_scene.main 'My Show|5f0c2f1e-8d3b-4a57-9c41-2b7e6a1d9f03'"
+  },
+  {
+   "id": "s14",
+   "brush": "line",
+   "text": "Write the matching configuration first: import reads the existing scene, it does not generate HCL.",
+   "new": true
+  }
+ ],
+ "glazes": {
+  "name": "Name of the scene as shown in OBS. Changing it renames the scene in place.",
+  "scene_uuid": "UUID that OBS assigned to the scene. Other resources use it to say which scene they belong to."
+ }
+}

@@ -1,0 +1,69 @@
+{
+ "page": "resources/group",
+ "subcategory": "Groups",
+ "seq": 11,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one group inside a scene: the group itself and its placement in that scene."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "obs-websocket cannot create a group, so the provider creates it through the native bridge plugin."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Fill the group with @resources/group_source or @resources/group_input, or manage a group and its children together with @resources/group_graph."
+  },
+  {
+   "id": "s4",
+   "brush": "note",
+   "text": "Group resources need the native bridge plugin loaded in OBS; see @guides/groups."
+  },
+  {
+   "id": "s5",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s6",
+   "brush": "example",
+   "text": "ex:resources/obs_group"
+  },
+  {
+   "id": "s7",
+   "brush": "schema"
+  },
+  {
+   "id": "s8",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s9",
+   "brush": "line",
+   "text": "Import by collection name, scene UUID, group UUID and the scene item ID of the group, separated by pipe characters:"
+  },
+  {
+   "id": "s10",
+   "brush": "literal",
+   "text": "collection|scene_uuid|group_uuid|item_id"
+  },
+  {
+   "id": "s11",
+   "brush": "shell",
+   "text": "terraform import obs_group.lights 'My Show|SCENE-UUID|GROUP-UUID|4'"
+  }
+ ],
+ "glazes": {
+  "group_uuid": "UUID that OBS assigned to the group. Children and filters refer to the group by it.",
+  "item_id": "Scene item ID of the group in its scene. Reference it from `item_ids` of @resources/scene_contents and from `group_item_id` of group children.",
+  "name": "Name of the group as shown in OBS. Changing it replaces the resource.",
+  "placement": "Visibility, lock state, order and transform of the group in its scene."
+ }
+}

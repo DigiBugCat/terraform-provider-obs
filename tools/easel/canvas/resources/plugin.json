@@ -1,0 +1,81 @@
+{
+ "page": "resources/plugin",
+ "subcategory": "Setup",
+ "seq": 13,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Installs one OBS plugin from a manifest that pins every file by SHA-256, and records the installation in state."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Planning and refreshing only inspect the installed files; the install itself happens on apply and requires OBS to be closed."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Destroying the resource forgets the installation and leaves the plugin files in place."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Declaring a plugin turns a missing or altered installation into a visible plan change instead of a failure when a source or filter first needs it.",
+   "new": true
+  },
+  {
+   "id": "s5",
+   "brush": "warn",
+   "text": "The installer currently supports macOS only, and `install_dir` defaults to the per-user OBS plugin folder on macOS."
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "example",
+   "text": "ex:resources/obs_plugin"
+  },
+  {
+   "id": "s8",
+   "brush": "heading",
+   "text": "Two Apply Stages",
+   "level": 3
+  },
+  {
+   "id": "s9",
+   "brush": "line",
+   "text": "OBS loads plugins only at startup, so a new plugin is not usable in the apply that installs it."
+  },
+  {
+   "id": "s10",
+   "brush": "step",
+   "text": "With OBS closed, apply a configuration that contains only `obs_plugin` resources."
+  },
+  {
+   "id": "s11",
+   "brush": "step",
+   "text": "Start OBS, then apply the scenes, sources and filters that use the plugin."
+  },
+  {
+   "id": "s12",
+   "brush": "line",
+   "text": "Keep the plugin resources in their own root module, because scene resources cannot be refreshed while OBS is closed.",
+   "new": true
+  },
+  {
+   "id": "s13",
+   "brush": "schema"
+  }
+ ],
+ "glazes": {
+  "install_dir": "Directory that receives the plugin. Defaults to the per-user OBS plugin folder on macOS. Changing it replaces the resource.",
+  "manifest_sha256": "SHA-256 of the manifest file, as 64 hexadecimal characters. The install is refused when the file does not match.",
+  "plugin_id": "Identifier of the plugin entry in the manifest. Changing it replaces the resource.",
+  "version": "Plugin version the configuration was written against. It must equal the version in the manifest entry."
+ }
+}

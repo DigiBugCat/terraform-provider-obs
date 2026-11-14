@@ -4,8 +4,8 @@ terraform {
   }
 }
 
-# Connects to obs-websocket on the local OBS. With no password set, the provider reads
-# the credentials from OBS's own obs-websocket config file.
+# Connects to obs-websocket on the local machine.
+# With no password set, the provider reads the credentials OBS itself stores.
 provider "obs" {
   host = "127.0.0.1"
   port = 4455

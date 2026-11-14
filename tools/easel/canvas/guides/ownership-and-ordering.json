@@ -1,0 +1,194 @@
+{
+ "page": "guides/ownership-and-ordering",
+ "title": "Ownership, Placements and Ordering",
+ "seq": 36,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "OBS separates a source from the places where it appears."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "This guide explains which resource owns which part, and how stacking order is declared."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "One Owner for Every Object",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "row",
+   "text": "Resource | Owns"
+  },
+  {
+   "id": "s5",
+   "brush": "row",
+   "text": "@resources/scene | One scene"
+  },
+  {
+   "id": "s6",
+   "brush": "row",
+   "text": "@resources/source, @resources/input, @resources/media_input | One source, its settings and its first placement"
+  },
+  {
+   "id": "s7",
+   "brush": "row",
+   "text": "@resources/scene_item | One further placement of a source that already exists"
+  },
+  {
+   "id": "s8",
+   "brush": "row",
+   "text": "@resources/scene_contents | Which placements a scene or group holds, and their order"
+  },
+  {
+   "id": "s9",
+   "brush": "row",
+   "text": "@resources/group | One group and its placement in a scene"
+  },
+  {
+   "id": "s10",
+   "brush": "row",
+   "text": "@resources/group_source, @resources/group_input | One source created inside a group"
+  },
+  {
+   "id": "s11",
+   "brush": "row",
+   "text": "@resources/group_graph | A group together with all of its children"
+  },
+  {
+   "id": "s12",
+   "brush": "row",
+   "text": "@resources/filter and the typed filter resources | One filter on one parent"
+  },
+  {
+   "id": "s13",
+   "brush": "line",
+   "text": "Give each object in OBS exactly one owner."
+  },
+  {
+   "id": "s14",
+   "brush": "heading",
+   "text": "The Anchor",
+   "level": 2
+  },
+  {
+   "id": "s15",
+   "brush": "line",
+   "text": "obs-websocket creates a source by placing it in a scene, so a source resource owns that first placement."
+  },
+  {
+   "id": "s16",
+   "brush": "line",
+   "text": "That placement is the anchor, and its attributes carry the `anchor_` prefix."
+  },
+  {
+   "id": "s17",
+   "brush": "line",
+   "text": "Add further placements of the same source with @resources/scene_item."
+  },
+  {
+   "id": "s18",
+   "brush": "note",
+   "text": "Never declare an `obs_scene_item` for an anchor, because two resources would then own one placement."
+  },
+  {
+   "id": "s19",
+   "brush": "heading",
+   "text": "Names, UUIDs and Item IDs",
+   "level": 2
+  },
+  {
+   "id": "s20",
+   "brush": "line",
+   "text": "Names are what people and controllers see, while UUIDs and scene item IDs are what OBS assigned."
+  },
+  {
+   "id": "s21",
+   "brush": "line",
+   "text": "Resources refer to each other by UUID and item ID, which also tells Terraform the order in which to create them."
+  },
+  {
+   "id": "s22",
+   "brush": "line",
+   "text": "A reference takes both the name and the UUID of its target, as the examples show."
+  },
+  {
+   "id": "s23",
+   "brush": "heading",
+   "text": "Layer Order",
+   "level": 2
+  },
+  {
+   "id": "s24",
+   "brush": "line",
+   "text": "An `index` counts from the bottom layer: index 0 is drawn first and everything above it covers it."
+  },
+  {
+   "id": "s25",
+   "brush": "line",
+   "text": "Terraform may create siblings in any order, so a placement whose index cannot be reached yet is placed last."
+  },
+  {
+   "id": "s26",
+   "brush": "line",
+   "text": "@resources/scene_contents then moves every placement to its declared position, which is why a scene with several placements should have one."
+  },
+  {
+   "id": "s27",
+   "brush": "line",
+   "text": "List the placements in `item_ids` in the same order as their `index` values, bottom layer first."
+  },
+  {
+   "id": "s28",
+   "brush": "line",
+   "text": "A scene without @resources/scene_contents settles on the plan after the one that created its placements.",
+   "new": true
+  },
+  {
+   "id": "s29",
+   "brush": "heading",
+   "text": "Exclusive Contents",
+   "level": 2
+  },
+  {
+   "id": "s30",
+   "brush": "line",
+   "text": "@resources/scene_contents is exclusive: a placement added by hand in OBS is removed on the next apply, and one removed by hand is created again."
+  },
+  {
+   "id": "s31",
+   "brush": "line",
+   "text": "Leave it out for a scene that people arrange by hand, and manage only the individual placements you care about."
+  },
+  {
+   "id": "s32",
+   "brush": "heading",
+   "text": "Renaming and Replacing",
+   "level": 2
+  },
+  {
+   "id": "s33",
+   "brush": "line",
+   "text": "Renaming a resource label in configuration is a `moved` block and changes nothing in OBS."
+  },
+  {
+   "id": "s34",
+   "brush": "line",
+   "text": "Changing a scene `name` renames the scene in place."
+  },
+  {
+   "id": "s35",
+   "brush": "line",
+   "text": "Changing the `name` of a source, group or filter replaces it, and the new object gets a new UUID."
+  },
+  {
+   "id": "s36",
+   "brush": "line",
+   "text": "Check every hotkey, controller and script that referred to the old object after a replacement."
+  }
+ ]
+}

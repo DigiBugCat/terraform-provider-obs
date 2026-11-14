@@ -1,0 +1,28 @@
+{
+ "name": "provider",
+ "seq": 2,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "terraform"
+  },
+  {
+   "id": "b2",
+   "kind": "provider",
+   "remark": [
+    "Connects to obs-websocket on the local machine.",
+    "With no password set, the provider reads the credentials OBS itself stores."
+   ],
+   "attrs": [
+    {
+     "path": "host",
+     "expr": "\"127.0.0.1\""
+    },
+    {
+     "path": "port",
+     "expr": "4455"
+    }
+   ]
+  }
+ ]
+}

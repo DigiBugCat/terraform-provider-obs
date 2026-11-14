@@ -1,0 +1,175 @@
+{
+ "name": "resources/obs_move_source_filter",
+ "seq": 3,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "resource",
+   "labels": [
+    "obs_source",
+    "camera"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Camera\""
+    },
+    {
+     "path": "kind",
+     "expr": "\"color_source_v3\""
+    },
+    {
+     "path": "settings_json",
+     "expr": "jsonencode({ color = 4283782485, width = 1920, height = 1080 })"
+    },
+    {
+     "path": "anchor_scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "anchor_scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "anchor_enabled",
+     "expr": "true"
+    },
+    {
+     "path": "anchor_index",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "anchor_transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "anchor_transform.bounds_alignment",
+     "expr": "0"
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "kind": "resource",
+   "labels": [
+    "obs_move_source_filter",
+    "slide_in"
+   ],
+   "remark": [
+    "The filter sits on the scene and moves the camera placement inside it."
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "parent_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "parent_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "name",
+     "expr": "\"Slide Camera In\""
+    },
+    {
+     "path": "enabled",
+     "expr": "true"
+    },
+    {
+     "path": "index",
+     "expr": "0"
+    },
+    {
+     "path": "target_source_name",
+     "expr": "obs_source.camera.name"
+    },
+    {
+     "path": "position_x",
+     "expr": "480"
+    },
+    {
+     "path": "position_y",
+     "expr": "270"
+    },
+    {
+     "path": "scale_x",
+     "expr": "0.5"
+    },
+    {
+     "path": "scale_y",
+     "expr": "0.5"
+    },
+    {
+     "path": "duration_ms",
+     "expr": "500"
+    }
+   ]
+  }
+ ]
+}

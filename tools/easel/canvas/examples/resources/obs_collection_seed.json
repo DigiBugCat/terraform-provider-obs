@@ -1,0 +1,48 @@
+{
+ "name": "resources/obs_collection_seed",
+ "seq": 2,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "variable",
+   "labels": [
+    "scene_collection_directory"
+   ],
+   "attrs": [
+    {
+     "path": "type",
+     "expr": "string"
+    },
+    {
+     "path": "description",
+     "expr": "\"Absolute path of the OBS scenes directory, for example the basic/scenes folder of the OBS configuration.\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "resource",
+   "labels": [
+    "obs_collection_seed",
+    "show"
+   ],
+   "remark": [
+    "Apply this while OBS is closed, then start OBS and select the collection."
+   ],
+   "attrs": [
+    {
+     "path": "name",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "scene_collection_directory",
+     "expr": "var.scene_collection_directory"
+    },
+    {
+     "path": "path",
+     "expr": "\"${var.scene_collection_directory}/My_Show.json\""
+    }
+   ]
+  }
+ ]
+}

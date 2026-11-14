@@ -1,0 +1,24 @@
+{
+ "name": "resources/obs_scene",
+ "seq": 1,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  }
+ ]
+}

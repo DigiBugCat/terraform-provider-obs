@@ -1,251 +1,80 @@
-# Terraform provider for OBS Studio
+# Terraform Provider for OBS Studio
 
-`terraform-provider-obs` manages an OBS Studio scene collection as Terraform
-resources: scenes, sources, groups, group children, filters, scene items and the
-ordered contents of each container. It talks to OBS over obs-websocket 5 and, for the
-group operations obs-websocket does not expose, through a small native plugin that
-ships in this repository.
+`terraform-provider-obs` manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5 and, for the group operations that obs-websocket does not expose, through a small native plugin that ships in this repository. Every write is read back from OBS before it is reported as done, and the provider refuses to write while OBS is streaming or recording.
 
-Every write is checked by reading OBS back. A resource is reported as created or
-changed only after the provider has observed the exact result it asked for, and it
-refuses to write at all while OBS is streaming or recording.
+## Documentation
 
-The provider is verified against a production collection of 1,166 resources
-(23 scenes, 52 groups, 630 inputs, 181 filters) that is not part of this repository. On that collection a full cycle is
-`destroy` in 35 seconds with nothing left behind, `apply` from empty in 30 seconds,
-and `plan` in under 4 seconds reporting no changes. The numbers and how they were
-measured are in [Performance](#performance).
+The full reference is on the Terraform Registry, starting at [the provider configuration](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs).
 
-## Requirements
-
-- OBS Studio 32.2.2 with obs-websocket 5.7.4 enabled. Other versions are untested.
-- Terraform 1.5 or later.
-- The `obstf-native-bridge` OBS plugin from [`native-bridge/`](native-bridge/README.md)
-  if the configuration uses groups. Scenes, sources, filters and scene items work
-  without it.
-- macOS or Windows host for OBS. The provider binary runs anywhere Go does.
-
-## Install
-
-The provider is not on the Terraform Registry yet. Build it and point Terraform at the
-binary with a development override:
-
-```sh
-go build -o /usr/local/lib/terraform-provider-obs/terraform-provider-obs .
-```
-
-```hcl
-# ~/.terraformrc
-provider_installation {
-  dev_overrides {
-    "digibugcat/obs" = "/usr/local/lib/terraform-provider-obs"
-  }
-  direct {}
-}
-```
-
-With the override in place, `terraform init` is not needed for this provider and
-`terraform plan` prints a warning that development overrides are in effect.
+- [Getting Started](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/getting-started) builds a first scene with a source and a filter.
+- [Ownership, Placements and Ordering](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/ownership-and-ordering) explains anchors, extra placements and layer order.
+- [Groups and the Native Bridge](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/groups) covers the group resources and the native plugin they need.
+- [Filters and Plugin Sources](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/filters-and-plugins) covers generic and typed filters and plugin kinds.
+- [Importing an Existing Collection](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/importing) brings existing scenes and sources under management.
+- [How Writes Are Verified](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/verified-writes) describes the checks around every write.
+- [Troubleshooting](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/troubleshooting) lists the refusals you are most likely to meet.
 
 ## Use
 
-```hcl
+Declare the provider and run `terraform init`:
+
+```terraform
 terraform {
   required_providers {
     obs = { source = "digibugcat/obs" }
   }
 }
 
+# Connects to obs-websocket on the local machine.
+# With no password set, the provider reads the credentials OBS itself stores.
 provider "obs" {
   host = "127.0.0.1"
   port = 4455
-  # password is read from OBS's own obs-websocket config when omitted on localhost.
-}
-
-resource "obs_scene" "office" {
-  collection = "My Show"
-  name       = "Office"
-}
-
-resource "obs_source" "camera" {
-  collection        = "My Show"
-  name              = "Camera"
-  kind              = "av_capture_input_v2"
-  settings_json     = jsonencode({ device = "0x1234" })
-  anchor_scene_name = obs_scene.office.name
-  anchor_scene_uuid = obs_scene.office.scene_uuid
-  anchor_enabled    = true
-  anchor_index      = 0
-  anchor_transform = {
-    x = 0, y = 0, scale_x = 1, scale_y = 1, rotation = 0
-    crop_left = 0, crop_top = 0, crop_right = 0, crop_bottom = 0
-    alignment = 5, bounds_type = "OBS_BOUNDS_NONE", bounds_alignment = 0
-    bounds_width = 0, bounds_height = 0, crop_to_bounds = false
-  }
-}
-
-resource "obs_filter" "camera_color" {
-  collection    = "My Show"
-  parent_name   = obs_source.camera.name
-  parent_uuid   = obs_source.camera.input_uuid
-  name          = "Color Correction"
-  kind          = "color_filter_v2"
-  enabled       = true
-  index         = 0
-  settings_json = jsonencode({ saturation = 0.2 })
-}
-
-# Declares the complete ordered contents of the scene. Placements added by hand in OBS
-# are removed on the next apply; placements removed by hand are recreated.
-resource "obs_scene_contents" "office" {
-  collection = "My Show"
-  scene_name = obs_scene.office.name
-  scene_uuid = obs_scene.office.scene_uuid
-  item_ids   = [obs_source.camera.anchor_item_id]
 }
 ```
 
-The `collection` attribute names the OBS scene collection every resource belongs to.
-The provider refuses to read or write when a different collection is active in OBS.
+## Requirements
 
-A complete small configuration is in [`examples/basic`](examples/basic/main.tf).
-Generated reference documentation for every resource is in [`docs/`](docs/index.md).
+- OBS Studio with obs-websocket 5 enabled; the provider is verified against OBS 32.2.2 with obs-websocket 5.7.4.
+- A base canvas of 1920x1080.
+- Terraform 1.5 or later.
+- The native bridge plugin from `native-bridge`, only for group resources, which today means macOS on Apple silicon.
 
 ## Resources
 
 | Resource | Manages |
 |---|---|
-| `obs_scene` | A scene, by name and OBS UUID. |
-| `obs_source` | An input of any kind with its settings and one anchor placement in a scene. |
-| `obs_input` | An image input with a typed `file` attribute and an anchor placement. |
-| `obs_media_input` | A media (ffmpeg) input with typed playback settings and an anchor placement. |
-| `obs_scene_item` | An additional placement of an existing source in a scene or group: enabled, index, transform. |
-| `obs_scene_contents` | The complete ordered membership of a scene or group. Prunes undeclared placements. |
-| `obs_group` | A group inside a scene, created through the native bridge. |
-| `obs_group_source` | An input created directly inside a group, with its placement. |
-| `obs_group_input` | An image input created directly inside a group. |
-| `obs_group_graph` | A whole group and its children as one resource, for group-level repair. |
-| `obs_filter` | A filter of any kind on a source, with settings and index. |
-| `obs_color_filter` | A color filter with typed attributes. |
-| `obs_plugin` | Records that a plugin is installed. Never installs or removes files. |
-| `obs_collection_seed` | Records the scene collection a configuration targets. Never deletes it. |
-| `obs_move_source_filter` | A Move plugin "Move Source" filter: animates one placement's transform, visibility or order. |
-| `obs_move_value_filter` | A Move plugin "Move Value" filter: animates a numeric setting of a source or filter. |
-
-The two Move resources need the [Move](https://github.com/exeldro/obs-move-transition)
-plugin installed in OBS; declare it with `obs_plugin` so a missing install is a plan
-error rather than a runtime surprise. Support for further plugins is added to this
-provider the same way; see [docs/adding-a-plugin.md](docs/adding-a-plugin.md).
-
-## How writes work
-
-Mutations run one at a time. Before the first write of each operation the provider
-reads the OBS version, the active collection, the base canvas and the stream, record,
-virtual camera and replay buffer status, and it refuses to continue if the collection
-is wrong, the canvas is not 1920x1080, or any output is active. Reads run
-concurrently over a pool of persistent connections.
-
-After each write the provider reads the object back and compares every field it set.
-If the readback does not match within four seconds the operation fails and Terraform
-reports the resource as tainted, so the next plan shows the real state.
-
-Siblings can be created in any order. A placement declared at index 5 that is created
-while only two siblings exist is placed last and `obs_scene_contents` moves it to
-index 5 once all siblings exist. A container without an `obs_scene_contents`
-resource converges on the following plan.
-
-Deleting Terraform's ownership of a plugin or a collection never removes the plugin
-files or the collection.
-
-## Performance
-
-Measured on the reference collection (1,166 resources) against OBS 32.2.2 on an Apple
-silicon Mac, Terraform 1.15.7, both on the same machine.
-
-| Command | Time | Notes |
-|---|---|---|
-| `terraform plan`, converged | 9.7 s | 3.7 s with `read_cache_ms = 2000` |
-| `terraform apply` from empty | 30 s | 1,166 created, zero errors |
-| `terraform destroy -refresh=false` | 35 s | zero managed objects left in OBS |
-
-Provider settings that affect speed:
-
-- `connections` (default 10): persistent obs-websocket connections used for
-  concurrent reads.
-- `read_cache_ms` (default 0): reuse list responses across reads for this many
-  milliseconds. Experimental. It speeds refresh by about 2.5x, and an edit made in OBS
-  during that window is not observed until the next read.
-- `concurrent_mutations` (default false): run writes to different containers
-  concurrently. Experimental and off because OBS 32.2.2 stopped answering under it on
-  the reference machine.
-
-Destroy time is now dominated by Terraform's own per-resource work, not by OBS.
-
-## Native bridge
-
-obs-websocket cannot create a group or place a source directly inside one.
-[`native-bridge/`](native-bridge/README.md) is an OBS plugin that adds those requests
-as obs-websocket vendor requests under the vendor name `obstf`. The provider calls it
-for `obs_group`, `obs_group_source`, `obs_group_input` and `obs_group_graph`, and
-checks the bridge's version and capabilities before every group write. The request
-contract, including every postcondition the bridge verifies, is in
-[`native-bridge/CONTRACT.md`](native-bridge/CONTRACT.md).
-
-Build it with `make -C native-bridge build` and copy
-`native-bridge/build/0.1.4/obstf-native-bridge.plugin` into OBS's plugin directory,
-then restart OBS.
-
-## Lab tools
-
-Small commands used to verify the provider against a running OBS. All of them read
-OBS's connection settings from its own config file.
-
-- `go run ./cmd/obs-inventory "[TF] "` counts scenes, groups, inputs and
-  filters whose names carry a prefix. Exit code 2 when anything is found. Used to
-  prove a destroy left nothing behind.
-- `go run ./cmd/obs-add-item <scene> <source> <new-input>` adds placements to a
-  scene the way a person would, to exercise pruning.
-- `go run ./cmd/obs-purge-prefix <prefix>` removes every prefixed object. This is the
-  recovery step after a crashed run leaves objects that state no longer tracks.
-- `go run ./cmd/ws-handshake-bench` times the obs-websocket transport strategies.
-
-## Repository layout
-
-```
-main.go             provider entry point
-tfprovider/         the provider: resources, obs-websocket client, native bridge client
-internal/           supporting packages (websocket protocol, collection model, checks)
-native-bridge/      the OBS plugin for group operations, with its contract and tests
-docs/               generated resource reference plus authoring guides
-examples/           example configurations
-cmd/                lab tools used to verify the provider against a running OBS
-tools/              protocol vectors pinned against obs-websocket
-```
+| [`obs_collection_seed`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/collection_seed) | Creates a new, empty scene collection file while OBS is closed, in the form the group resources require. |
+| [`obs_color_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/color_filter) | Manages one Color Correction filter with typed attributes for hue and opacity. |
+| [`obs_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/filter) | Manages one filter of any installed kind on a source, scene or group, with the settings you choose to manage. |
+| [`obs_group`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group) | Manages one group inside a scene: the group itself and its placement in that scene. |
+| [`obs_group_graph`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_graph) | Manages a whole group as one resource: the group, its placement in the scene, and an ordered list of image children with their placements. |
+| [`obs_group_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_input) | Manages one image source that is created directly inside a group, with its placement there. |
+| [`obs_group_source`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_source) | Manages one input of any installed kind that is created directly inside a group, with its placement there. |
+| [`obs_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/input) | Manages one image source, with typed attributes for its file, and its first placement in a scene. |
+| [`obs_media_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/media_input) | Manages one media source that plays a local file, with typed playback settings, and its first placement in a scene. |
+| [`obs_move_source_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/move_source_filter) | Manages one Move Source filter from the Move plugin, which animates a placement to a target position, scale and rotation. |
+| [`obs_move_value_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/move_value_filter) | Manages one Move Value filter from the Move plugin, which animates one numeric setting to a target value. |
+| [`obs_plugin`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/plugin) | Installs one OBS plugin from a manifest that pins every file by SHA-256, and records the installation in state. |
+| [`obs_scene`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene) | Manages one scene in an OBS scene collection. |
+| [`obs_scene_contents`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene_contents) | Declares the complete, ordered list of placements in one scene or group. |
+| [`obs_scene_item`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene_item) | Manages one additional placement of an existing source in a scene or group: its visibility, stacking position and transform. |
+| [`obs_source`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/source) | Manages one OBS input of any installed kind, the settings you choose to manage, and its first placement in a scene. |
 
 ## Development
 
-```sh
-make test     # go test ./tfprovider/ ./internal/...
+```shell
+make build
+make test
 make vet
-make docs     # regenerate docs/ from the provider schema
+make docs
+make docs-check
 ```
 
-Tests run offline against scripted obs-websocket fakes. `go test -short` skips the
-`TestTerraformCLI*` tests, which run the pinned Terraform binary from
-`.tools/terraform/1.15.7/` against a provider built from the working tree
-(`tfprovider/cli_harness_test.go`). The lifecycle checks (destroy, inventory, apply,
-plan) need a running OBS with the target collection selected.
+Tests run offline against scripted obs-websocket fakes. The files under `docs` and the generated examples are rendered by `make docs` from the canvases in `tools/easel/canvas` and are never edited by hand. Text is laid one sentence at a time with the easel, which checks every name it mentions against the provider schema and source.
 
-Two environment variables exist for tests and diagnostics: `OBSTF_TF_TRACE_PATH`
-writes mutation receipts as JSONL with settings redacted, and
-`OBSTF_TF_INJECT_AFTER_NATIVE_TYPE=<request type>` makes the provider report an
-authoritative interruption after that request completes, so tests can prove identity
-survives a lost response.
-
-Releases are cut by pushing a `v*` tag. The release workflow signs the checksums with
-the `GPG_PRIVATE_KEY` repository secret, which is not configured yet, so no release
-has been published.
+Releases are cut by pushing a version tag, and the release workflow builds and signs the archives that the Registry expects.
 
 ## License
 
-[Mozilla Public License 2.0](LICENSE).
+Mozilla Public License 2.0.

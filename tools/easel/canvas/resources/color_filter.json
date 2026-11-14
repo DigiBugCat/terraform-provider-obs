@@ -1,0 +1,54 @@
+{
+ "page": "resources/color_filter",
+ "subcategory": "Filters",
+ "seq": 8,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one Color Correction filter with typed attributes for hue and opacity."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "It is the typed form of @resources/filter for the `color_filter_v2` kind and follows the same lifecycle."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "example",
+   "text": "ex:resources/obs_color_filter"
+  },
+  {
+   "id": "s5",
+   "brush": "schema"
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "line",
+   "text": "Import by collection name, parent UUID, parent name and filter name, separated by pipe characters:"
+  },
+  {
+   "id": "s8",
+   "brush": "shell",
+   "text": "terraform import obs_color_filter.tint 'My Show|SOURCE-UUID|Camera|Tint'"
+  }
+ ],
+ "glazes": {
+  "hue_shift": "Hue rotation in degrees.",
+  "kind": "Always `color_filter_v2`.",
+  "name": "Name of the filter as shown in OBS. Changing it replaces the resource.",
+  "opacity": "Opacity of the parent, from 0 (transparent) to 1 (opaque)."
+ }
+}

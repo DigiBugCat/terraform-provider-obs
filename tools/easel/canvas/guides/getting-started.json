@@ -1,0 +1,157 @@
+{
+ "page": "guides/getting-started",
+ "title": "Getting Started",
+ "seq": 29,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "This guide takes an empty scene collection to one scene with a coloured background and a filter."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Along the way it shows the plan, apply and verify loop that the provider is built around."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Before You Start",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "step",
+   "text": "Install OBS Studio and enable the WebSocket server under Tools, WebSocket Server Settings."
+  },
+  {
+   "id": "s5",
+   "brush": "step",
+   "text": "Set the base canvas to 1920x1080 under Settings, Video."
+  },
+  {
+   "id": "s6",
+   "brush": "step",
+   "text": "Create a scene collection for this guide, here called My Show, and leave it selected."
+  },
+  {
+   "id": "s7",
+   "brush": "step",
+   "text": "Stop streaming, recording, the virtual camera and the replay buffer, because the provider refuses to write while any output is active."
+  },
+  {
+   "id": "s8",
+   "brush": "warn",
+   "text": "Use a scene collection made for Terraform: `obs_scene_contents` removes every placement it does not list."
+  },
+  {
+   "id": "s9",
+   "brush": "heading",
+   "text": "Configuration",
+   "level": 2
+  },
+  {
+   "id": "s10",
+   "brush": "line",
+   "text": "Save this as `main.tf` in an empty directory:"
+  },
+  {
+   "id": "s11",
+   "brush": "example",
+   "text": "ex:guides/getting-started"
+  },
+  {
+   "id": "s12",
+   "brush": "bullet",
+   "text": "The `collection` local names the scene collection, and every resource repeats it."
+  },
+  {
+   "id": "s13",
+   "brush": "bullet",
+   "text": "@resources/source creates the source together with its first placement, the anchor, in the scene."
+  },
+  {
+   "id": "s14",
+   "brush": "bullet",
+   "text": "@resources/filter attaches to the source through `parent_uuid`, so Terraform creates the source first."
+  },
+  {
+   "id": "s15",
+   "brush": "bullet",
+   "text": "@resources/scene_contents lists every placement the scene holds, bottom layer first."
+  },
+  {
+   "id": "s16",
+   "brush": "heading",
+   "text": "Apply",
+   "level": 2
+  },
+  {
+   "id": "s17",
+   "brush": "shell",
+   "text": "terraform init"
+  },
+  {
+   "id": "s18",
+   "brush": "shell",
+   "text": "terraform plan -out=show.tfplan"
+  },
+  {
+   "id": "s19",
+   "brush": "shell",
+   "text": "terraform apply show.tfplan"
+  },
+  {
+   "id": "s20",
+   "brush": "line",
+   "text": "OBS shows the new scene as soon as the apply finishes."
+  },
+  {
+   "id": "s21",
+   "brush": "line",
+   "text": "Run `terraform plan` again: it reports no changes, which confirms that what OBS holds is what the configuration declares."
+  },
+  {
+   "id": "s22",
+   "brush": "heading",
+   "text": "Change Something",
+   "level": 2
+  },
+  {
+   "id": "s23",
+   "brush": "line",
+   "text": "Edit a field of `anchor_transform`, for example `x`, then plan and apply."
+  },
+  {
+   "id": "s24",
+   "brush": "line",
+   "text": "The plan shows one placement changing in place, and the source keeps its UUID."
+  },
+  {
+   "id": "s25",
+   "brush": "line",
+   "text": "Now drag the source somewhere else in OBS and plan again: the provider reports the drift, and the next apply puts the placement back."
+  },
+  {
+   "id": "s26",
+   "brush": "heading",
+   "text": "Next Steps",
+   "level": 2
+  },
+  {
+   "id": "s27",
+   "brush": "bullet",
+   "text": "@guides/ownership-and-ordering explains anchors, extra placements and layer order."
+  },
+  {
+   "id": "s28",
+   "brush": "bullet",
+   "text": "@guides/importing brings scenes and sources that already exist under management."
+  },
+  {
+   "id": "s29",
+   "brush": "bullet",
+   "text": "@guides/verified-writes describes what the provider checks around every write."
+  }
+ ]
+}

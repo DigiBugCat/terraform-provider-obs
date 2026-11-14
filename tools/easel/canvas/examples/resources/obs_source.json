@@ -1,0 +1,118 @@
+{
+ "name": "resources/obs_source",
+ "seq": 2,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "resource",
+   "labels": [
+    "obs_source",
+    "overlay"
+   ],
+   "remark": [
+    "Only the keys listed in settings_json are managed.",
+    "Every other setting of the source keeps the value it has in OBS."
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Chat Overlay\""
+    },
+    {
+     "path": "kind",
+     "expr": "\"browser_source\""
+    },
+    {
+     "path": "settings_json",
+     "expr": "jsonencode({ url = \"https://example.com/overlay\", width = 1920, height = 1080 })"
+    },
+    {
+     "path": "anchor_scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "anchor_scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "anchor_enabled",
+     "expr": "true"
+    },
+    {
+     "path": "anchor_index",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "anchor_transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "anchor_transform.bounds_alignment",
+     "expr": "0"
+    }
+   ]
+  }
+ ]
+}

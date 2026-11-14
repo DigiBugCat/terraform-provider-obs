@@ -1,0 +1,74 @@
+{
+ "page": "resources/media_input",
+ "subcategory": "Sources",
+ "seq": 11,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one media source that plays a local file, with typed playback settings, and its first placement in a scene."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "It is the typed form of @resources/source for the `ffmpeg_source` kind."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "Reading the resource observes the playback state without starting, stopping or seeking the media."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Changing a playback setting can restart the media in OBS."
+  },
+  {
+   "id": "s5",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s6",
+   "brush": "example",
+   "text": "ex:resources/obs_media_input"
+  },
+  {
+   "id": "s7",
+   "brush": "schema"
+  },
+  {
+   "id": "s8",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s9",
+   "brush": "line",
+   "text": "Import by collection name, source UUID, anchor scene UUID and anchor scene item ID, separated by pipe characters:"
+  },
+  {
+   "id": "s10",
+   "brush": "literal",
+   "text": "collection|input_uuid|anchor_scene_uuid|anchor_item_id"
+  },
+  {
+   "id": "s11",
+   "brush": "shell",
+   "text": "terraform import obs_media_input.intro 'My Show|SOURCE-UUID|SCENE-UUID|7'"
+  }
+ ],
+ "glazes": {
+  "close_when_inactive": "Whether OBS closes the file while the source is not showing.",
+  "is_local_file": "Must be `true`: only local files are supported.",
+  "local_file": "Absolute path of the media file.",
+  "looping": "Whether playback loops.",
+  "name": "Name of the source as shown in OBS. Changing it replaces the resource.",
+  "observed_media_cursor": "Playback position in milliseconds at the last read.",
+  "observed_media_duration": "Length of the media in milliseconds, as OBS reported it.",
+  "observed_media_state": "Playback state that OBS reported at the last read.",
+  "restart_on_activate": "Whether playback restarts each time the source becomes active."
+ }
+}

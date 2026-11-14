@@ -1,0 +1,68 @@
+{
+ "page": "resources/move_value_filter",
+ "subcategory": "Filters",
+ "seq": 11,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one Move Value filter from the Move plugin, which animates one numeric setting to a target value."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "The setting belongs either to the parent source itself or to another filter on the same parent."
+  },
+  {
+   "id": "s3",
+   "brush": "note",
+   "text": "The Move plugin must be installed in OBS; declare it with @resources/plugin or install it by hand."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "The provider configures the filter and never starts it: triggering the animation is left to a hotkey, a controller or the OBS interface.",
+   "new": true
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "Only manual triggering is supported, so `start_trigger` and `stop_trigger` stay 0 and `enabled_match_moving` stays false."
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "example",
+   "text": "ex:resources/obs_move_value_filter"
+  },
+  {
+   "id": "s8",
+   "brush": "schema"
+  },
+  {
+   "id": "s9",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s10",
+   "brush": "line",
+   "text": "Import with a JSON object that names the collection, parent UUID, parent name and filter name:"
+  },
+  {
+   "id": "s11",
+   "brush": "shell",
+   "text": "terraform import obs_move_value_filter.fade_out '{\"collection\":\"My Show\",\"parent_uuid\":\"SOURCE-UUID\",\"parent_name\":\"Camera\",\"name\":\"Fade Out\"}'"
+  }
+ ],
+ "glazes": {
+  "kind": "Always `move_value_filter`.",
+  "name": "Name of the filter as shown in OBS. Changing it replaces the resource."
+ }
+}

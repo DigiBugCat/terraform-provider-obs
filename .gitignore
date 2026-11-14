@@ -3,3 +3,4 @@
 *.tfstate.*
 dist/
 native-bridge/build/
+tools/easel/canvas/.wet

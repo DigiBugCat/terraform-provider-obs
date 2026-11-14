@@ -1,0 +1,131 @@
+{
+ "page": "guides/importing",
+ "title": "Importing an Existing Collection",
+ "seq": 24,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Import binds an object that already exists in OBS to a resource in your configuration."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "It reads the object and does not write the configuration for you."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Procedure",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "step",
+   "text": "Write the resource block with the values the object has now."
+  },
+  {
+   "id": "s5",
+   "brush": "step",
+   "text": "Look up the UUIDs and scene item IDs that the import ID needs."
+  },
+  {
+   "id": "s6",
+   "brush": "step",
+   "text": "Run `terraform import` with the whole ID in single quotes, because it contains pipe characters."
+  },
+  {
+   "id": "s7",
+   "brush": "step",
+   "text": "Run `terraform plan` and settle every difference deliberately before the first apply."
+  },
+  {
+   "id": "s8",
+   "brush": "heading",
+   "text": "Import IDs",
+   "level": 2
+  },
+  {
+   "id": "s9",
+   "brush": "bullet",
+   "text": "@resources/scene: `collection|scene_uuid`."
+  },
+  {
+   "id": "s10",
+   "brush": "bullet",
+   "text": "@resources/source, @resources/input and @resources/media_input: `collection|input_uuid|anchor_scene_uuid|anchor_item_id`."
+  },
+  {
+   "id": "s11",
+   "brush": "bullet",
+   "text": "@resources/scene_item: `collection|scene_uuid|source_uuid|item_id`, with `|group` appended for a group."
+  },
+  {
+   "id": "s12",
+   "brush": "bullet",
+   "text": "@resources/group: `collection|scene_uuid|group_uuid|item_id`."
+  },
+  {
+   "id": "s13",
+   "brush": "bullet",
+   "text": "@resources/group_source and @resources/group_input: `collection|scene_uuid|group_uuid|group_item_id|input_uuid|item_id`."
+  },
+  {
+   "id": "s14",
+   "brush": "bullet",
+   "text": "@resources/group_graph: `collection|scene_uuid|group_uuid|parent_item_id|stable_key=source_uuid:item_id,...`."
+  },
+  {
+   "id": "s15",
+   "brush": "bullet",
+   "text": "@resources/filter and the Move filters: a JSON object, shown on each resource page."
+  },
+  {
+   "id": "s16",
+   "brush": "bullet",
+   "text": "@resources/color_filter: collection, parent UUID, parent name and filter name, separated by pipe characters."
+  },
+  {
+   "id": "s17",
+   "brush": "heading",
+   "text": "Finding UUIDs and Item IDs",
+   "level": 2
+  },
+  {
+   "id": "s18",
+   "brush": "line",
+   "text": "obs-websocket reports all of them: `GetSceneList` returns scene UUIDs, `GetInputList` returns source UUIDs and `GetSceneItemList` returns scene item IDs."
+  },
+  {
+   "id": "s19",
+   "brush": "line",
+   "text": "Any obs-websocket client can send those requests."
+  },
+  {
+   "id": "s20",
+   "brush": "heading",
+   "text": "What Import Does Not Do",
+   "level": 2
+  },
+  {
+   "id": "s21",
+   "brush": "bullet",
+   "text": "It never adopts an object by name: an object with the same name and another UUID is a different object."
+  },
+  {
+   "id": "s22",
+   "brush": "bullet",
+   "text": "An imported @resources/source or @resources/filter starts with no managed settings, and the first apply takes ownership of the keys you list."
+  },
+  {
+   "id": "s23",
+   "brush": "bullet",
+   "text": "@resources/scene_contents, @resources/plugin and @resources/collection_seed cannot be imported; declare them and apply."
+  },
+  {
+   "id": "s24",
+   "brush": "warn",
+   "text": "Adding @resources/scene_contents to an imported scene removes every placement that its list leaves out."
+  }
+ ]
+}

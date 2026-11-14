@@ -1,0 +1,94 @@
+{
+ "page": "resources/source",
+ "subcategory": "Sources",
+ "seq": 17,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one OBS input of any installed kind, the settings you choose to manage, and its first placement in a scene."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Use it for cameras, browser sources, captures, text and any source a plugin adds."
+  },
+  {
+   "id": "s17",
+   "brush": "line",
+   "text": "obs-websocket creates a source by placing it in a scene, so the resource also owns that first placement, called the anchor."
+  },
+  {
+   "id": "s4",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s5",
+   "brush": "example",
+   "text": "ex:resources/obs_source"
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Managed Settings",
+   "level": 3
+  },
+  {
+   "id": "s7",
+   "brush": "line",
+   "text": "The `settings_json` object owns exactly its top-level keys."
+  },
+  {
+   "id": "s8",
+   "brush": "line",
+   "text": "A key you leave out keeps its OBS value, and removing a key from the object stops managing it without resetting it."
+  },
+  {
+   "id": "s9",
+   "brush": "line",
+   "text": "A nested object is owned as a whole, and a top-level `null` is rejected."
+  },
+  {
+   "id": "s10",
+   "brush": "line",
+   "text": "The value is marked sensitive in plan output, but Terraform state still stores it, so keep state private."
+  },
+  {
+   "id": "s11",
+   "brush": "schema"
+  },
+  {
+   "id": "s12",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s13",
+   "brush": "line",
+   "text": "Import by collection name, source UUID, anchor scene UUID and anchor scene item ID, separated by pipe characters:"
+  },
+  {
+   "id": "s14",
+   "brush": "literal",
+   "text": "collection|input_uuid|anchor_scene_uuid|anchor_item_id"
+  },
+  {
+   "id": "s15",
+   "brush": "shell",
+   "text": "terraform import obs_source.overlay 'My Show|SOURCE-UUID|SCENE-UUID|7'"
+  },
+  {
+   "id": "s16",
+   "brush": "line",
+   "text": "An imported source starts with no managed settings, and the first apply of matching configuration takes ownership of the keys it lists.",
+   "new": true
+  }
+ ],
+ "glazes": {
+  "kind": "OBS input kind, for example `browser_source` or `color_source_v3`. It must be a kind the running OBS has registered. Changing it replaces the resource.",
+  "name": "Name of the source as shown in OBS. Changing it replaces the resource."
+ }
+}

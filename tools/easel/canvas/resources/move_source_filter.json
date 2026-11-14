@@ -1,0 +1,73 @@
+{
+ "page": "resources/move_source_filter",
+ "subcategory": "Filters",
+ "seq": 11,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Manages one Move Source filter from the Move plugin, which animates a placement to a target position, scale and rotation."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "The filter sits on a scene or group and names the placement to move by its source name."
+  },
+  {
+   "id": "s3",
+   "brush": "note",
+   "text": "The Move plugin must be installed in OBS; declare it with @resources/plugin or install it by hand."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "The provider configures the filter and never starts it: triggering the animation is left to a hotkey, a controller or the OBS interface.",
+   "new": true
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "Only manual triggering is supported, so `start_trigger` and `stop_trigger` stay 0 and `enabled_match_moving` stays false."
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "example",
+   "text": "ex:resources/obs_move_source_filter"
+  },
+  {
+   "id": "s8",
+   "brush": "schema"
+  },
+  {
+   "id": "s9",
+   "brush": "heading",
+   "text": "Import",
+   "level": 2
+  },
+  {
+   "id": "s10",
+   "brush": "line",
+   "text": "Import with a JSON object that names the collection, parent UUID, parent name and filter name:"
+  },
+  {
+   "id": "s11",
+   "brush": "shell",
+   "text": "terraform import obs_move_source_filter.slide_in '{\"collection\":\"My Show\",\"parent_uuid\":\"SCENE-UUID\",\"parent_name\":\"Main\",\"name\":\"Slide Camera In\"}'"
+  }
+ ],
+ "glazes": {
+  "kind": "Always `move_source_filter`.",
+  "name": "Name of the filter as shown in OBS. Changing it replaces the resource.",
+  "position_x": "Target horizontal position in pixels. Defaults to 0.",
+  "position_y": "Target vertical position in pixels. Defaults to 0.",
+  "rotation": "Target rotation in degrees. Defaults to 0.",
+  "scale_x": "Target horizontal scale factor. Defaults to 1.",
+  "scale_y": "Target vertical scale factor. Defaults to 1."
+ }
+}

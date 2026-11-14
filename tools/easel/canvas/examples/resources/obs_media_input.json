@@ -1,0 +1,126 @@
+{
+ "name": "resources/obs_media_input",
+ "seq": 2,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "resource",
+   "labels": [
+    "obs_media_input",
+    "intro"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Intro Video\""
+    },
+    {
+     "path": "local_file",
+     "expr": "\"C:/Program Files/Git/Users/me/show/intro.mp4\""
+    },
+    {
+     "path": "is_local_file",
+     "expr": "true"
+    },
+    {
+     "path": "looping",
+     "expr": "false"
+    },
+    {
+     "path": "restart_on_activate",
+     "expr": "true"
+    },
+    {
+     "path": "close_when_inactive",
+     "expr": "true"
+    },
+    {
+     "path": "anchor_scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "anchor_scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "anchor_enabled",
+     "expr": "true"
+    },
+    {
+     "path": "anchor_index",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "anchor_transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "anchor_transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "anchor_transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "anchor_transform.bounds_alignment",
+     "expr": "0"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,54 @@
+{
+ "page": "resources/collection_seed",
+ "subcategory": "Setup",
+ "seq": 8,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Creates a new, empty scene collection file while OBS is closed, in the form the group resources require."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Apply it with OBS closed, then start OBS and select the collection before applying scenes and sources."
+  },
+  {
+   "id": "s3",
+   "brush": "line",
+   "text": "It never converts or overwrites an existing collection, and it refuses a name that another collection file already uses."
+  },
+  {
+   "id": "s4",
+   "brush": "line",
+   "text": "Destroying the resource forgets the binding and keeps the file and every scene in it."
+  },
+  {
+   "id": "s5",
+   "brush": "warn",
+   "text": "The resource checks that OBS is not running by inspecting the process list, which is supported on macOS."
+  },
+  {
+   "id": "s6",
+   "brush": "heading",
+   "text": "Example Usage",
+   "level": 2
+  },
+  {
+   "id": "s7",
+   "brush": "example",
+   "text": "ex:resources/obs_collection_seed"
+  },
+  {
+   "id": "s8",
+   "brush": "schema"
+  }
+ ],
+ "glazes": {
+  "bootstrap_scene_uuid": "UUID of the single empty scene the new collection starts with.",
+  "name": "Name of the scene collection. Letters, digits and single spaces only. Changing it replaces the resource.",
+  "path": "Absolute path of the collection file: the directory, then the name with spaces replaced by underscores and a `.json` extension. Changing it replaces the resource.",
+  "scene_collection_directory": "Absolute path of the existing directory where OBS keeps scene collection files. Changing it replaces the resource.",
+  "seed_sha256": "SHA-256 of the collection file as it was written."
+ }
+}

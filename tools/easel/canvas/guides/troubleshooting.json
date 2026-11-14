@@ -1,0 +1,187 @@
+{
+ "page": "guides/troubleshooting",
+ "title": "Troubleshooting",
+ "seq": 35,
+ "strokes": [
+  {
+   "id": "s1",
+   "brush": "line",
+   "text": "Most failures are the provider declining to act."
+  },
+  {
+   "id": "s2",
+   "brush": "line",
+   "text": "Each section quotes the message the provider prints and then names the cause."
+  },
+  {
+   "id": "s3",
+   "brush": "heading",
+   "text": "Wrong Scene Collection",
+   "level": 2
+  },
+  {
+   "id": "s4",
+   "brush": "literal",
+   "text": "refusing OBS write/read: current collection"
+  },
+  {
+   "id": "s5",
+   "brush": "line",
+   "text": "OBS has a different scene collection selected than the `collection` of the resource."
+  },
+  {
+   "id": "s6",
+   "brush": "line",
+   "text": "Select the right collection in OBS and plan again."
+  },
+  {
+   "id": "s7",
+   "brush": "heading",
+   "text": "Unsupported Canvas",
+   "level": 2
+  },
+  {
+   "id": "s8",
+   "brush": "literal",
+   "text": "refusing mutation on unsupported live canvas"
+  },
+  {
+   "id": "s9",
+   "brush": "line",
+   "text": "Set the base canvas to 1920x1080 under Settings, Video."
+  },
+  {
+   "id": "s10",
+   "brush": "heading",
+   "text": "An Output Is Active",
+   "level": 2
+  },
+  {
+   "id": "s11",
+   "brush": "literal",
+   "text": "reports active output"
+  },
+  {
+   "id": "s12",
+   "brush": "line",
+   "text": "Stop streaming, recording, the virtual camera and the replay buffer, then apply again."
+  },
+  {
+   "id": "s13",
+   "brush": "heading",
+   "text": "No Connection Settings",
+   "level": 2
+  },
+  {
+   "id": "s14",
+   "brush": "literal",
+   "text": "no obs-websocket config found"
+  },
+  {
+   "id": "s15",
+   "brush": "line",
+   "text": "The provider looked for the configuration file OBS writes and did not find one."
+  },
+  {
+   "id": "s16",
+   "brush": "line",
+   "text": "Enable the WebSocket server in OBS, or set `host`, `port` and `password` in @index."
+  },
+  {
+   "id": "s17",
+   "brush": "heading",
+   "text": "Password Problems",
+   "level": 2
+  },
+  {
+   "id": "s18",
+   "brush": "literal",
+   "text": "obs-websocket requires a password and none was provided"
+  },
+  {
+   "id": "s20",
+   "brush": "line",
+   "text": "Set `password` to the value shown in the WebSocket Server Settings of OBS."
+  },
+  {
+   "id": "s21",
+   "brush": "line",
+   "text": "A remote `host` always needs `password`, because the local configuration file describes only the local OBS."
+  },
+  {
+   "id": "s22",
+   "brush": "heading",
+   "text": "Bridge Version Mismatch",
+   "level": 2
+  },
+  {
+   "id": "s23",
+   "brush": "literal",
+   "text": "ordinary obs-websocket version identity mismatch"
+  },
+  {
+   "id": "s24",
+   "brush": "line",
+   "text": "Group resources run only against OBS 32.2.2 with obs-websocket 5.7.4; see @guides/groups."
+  },
+  {
+   "id": "s25",
+   "brush": "heading",
+   "text": "A Filter Would Be Displaced",
+   "level": 2
+  },
+  {
+   "id": "s26",
+   "brush": "literal",
+   "text": "refusing to displace filter"
+  },
+  {
+   "id": "s27",
+   "brush": "line",
+   "text": "The declared `index` is held by a filter the provider does not manage."
+  },
+  {
+   "id": "s28",
+   "brush": "line",
+   "text": "Choose a free position, or bring the other filter under management first."
+  },
+  {
+   "id": "s29",
+   "brush": "heading",
+   "text": "A Plan That Never Comes Back Empty",
+   "level": 2
+  },
+  {
+   "id": "s30",
+   "brush": "line",
+   "text": "Something else keeps changing a value that Terraform manages, such as a controller, a hotkey or an animation filter."
+  },
+  {
+   "id": "s31",
+   "brush": "line",
+   "text": "Decide which of the two owns the value, and remove it from the other."
+  },
+  {
+   "id": "s32",
+   "brush": "line",
+   "text": "A scene without @resources/scene_contents can also need a second plan before its layer order settles.",
+   "new": true
+  },
+  {
+   "id": "s33",
+   "brush": "heading",
+   "text": "After a Timeout",
+   "level": 2
+  },
+  {
+   "id": "s34",
+   "brush": "line",
+   "text": "Run a fresh plan when a write times out or reports an uncertain result."
+  },
+  {
+   "id": "s35",
+   "brush": "line",
+   "text": "The provider observes OBS again and plans from what it finds, and it does not replay the earlier write."
+  }
+ ]
+}

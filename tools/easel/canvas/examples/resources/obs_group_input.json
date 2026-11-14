@@ -1,0 +1,244 @@
+{
+ "name": "resources/obs_group_input",
+ "seq": 3,
+ "blocks": [
+  {
+   "id": "b1",
+   "kind": "resource",
+   "labels": [
+    "obs_scene",
+    "main"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "name",
+     "expr": "\"Main\""
+    }
+   ]
+  },
+  {
+   "id": "b2",
+   "kind": "resource",
+   "labels": [
+    "obs_group",
+    "lights"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "name",
+     "expr": "\"Party Lights\""
+    },
+    {
+     "path": "placement.enabled",
+     "expr": "true"
+    },
+    {
+     "path": "placement.locked",
+     "expr": "false"
+    },
+    {
+     "path": "placement.index",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "placement.transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "placement.transform.bounds_alignment",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_width",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_height",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_to_bounds",
+     "expr": "false"
+    }
+   ]
+  },
+  {
+   "id": "b3",
+   "kind": "resource",
+   "labels": [
+    "obs_group_input",
+    "left_light"
+   ],
+   "attrs": [
+    {
+     "path": "collection",
+     "expr": "\"My Show\""
+    },
+    {
+     "path": "scene_name",
+     "expr": "obs_scene.main.name"
+    },
+    {
+     "path": "scene_uuid",
+     "expr": "obs_scene.main.scene_uuid"
+    },
+    {
+     "path": "group_name",
+     "expr": "obs_group.lights.name"
+    },
+    {
+     "path": "group_uuid",
+     "expr": "obs_group.lights.group_uuid"
+    },
+    {
+     "path": "group_item_id",
+     "expr": "obs_group.lights.item_id"
+    },
+    {
+     "path": "name",
+     "expr": "\"Party Light Left\""
+    },
+    {
+     "path": "kind",
+     "expr": "\"image_source\""
+    },
+    {
+     "path": "file",
+     "expr": "\"C:/Program Files/Git/Users/me/show/light-left.png\""
+    },
+    {
+     "path": "unload",
+     "expr": "false"
+    },
+    {
+     "path": "placement.enabled",
+     "expr": "true"
+    },
+    {
+     "path": "placement.locked",
+     "expr": "false"
+    },
+    {
+     "path": "placement.index",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.x",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.y",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.scale_x",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.scale_y",
+     "expr": "1"
+    },
+    {
+     "path": "placement.transform.rotation",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_left",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_top",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_right",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_bottom",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.alignment",
+     "expr": "5"
+    },
+    {
+     "path": "placement.transform.bounds_type",
+     "expr": "\"OBS_BOUNDS_NONE\""
+    },
+    {
+     "path": "placement.transform.bounds_alignment",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_width",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.bounds_height",
+     "expr": "0"
+    },
+    {
+     "path": "placement.transform.crop_to_bounds",
+     "expr": "false"
+    }
+   ]
+  }
+ ]
+}
