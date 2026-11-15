@@ -15,7 +15,10 @@ import (
 )
 
 type client struct {
-	cfg                ws.Config
+	cfg ws.Config
+	// canvas is the base canvas the configuration was written for (provider
+	// canvas_width/canvas_height); the zero value means the default.
+	canvas             [2]int
 	discoverConfig     bool
 	portExplicit       bool
 	credentialsUnknown bool
@@ -98,7 +101,7 @@ func (c *client) withKeyed(ctx context.Context, keys []string, fn func(requester
 	if c.testRequester != nil {
 		return fn(c.testRequester)
 	}
-	return c.run(ctx, func(cl *ws.Client) error { return fn(exclusiveRequester{cl, &preflightScope{}}) })
+	return c.run(ctx, func(cl *ws.Client) error { return fn(exclusiveRequester{cl, &preflightScope{canvas: c.canvas}}) })
 }
 
 // defaultConnections matches Terraform's default -parallelism closely enough that a
@@ -259,7 +262,7 @@ func (c *client) withRequester(ctx context.Context, fn func(requester) error) er
 	if c.testRequester != nil {
 		return fn(c.testRequester)
 	}
-	return c.run(ctx, func(cl *ws.Client) error { return fn(exclusiveRequester{cl, &preflightScope{}}) })
+	return c.run(ctx, func(cl *ws.Client) error { return fn(exclusiveRequester{cl, &preflightScope{canvas: c.canvas}}) })
 }
 
 // withReadRequester runs fn on the shared side of the lock: Reads overlap each other on
@@ -434,6 +437,7 @@ func ensureCollection(ctx context.Context, cl requester, want string) (string, e
 // values before each of them was most of a resource's apply time. Only the request-type
 // capability check is repeated per mutation, from the cached availableRequests.
 type preflightScope struct {
+	canvas     [2]int // expected base canvas; zero means the default
 	collection string
 	guard      map[string]any
 	available  map[string]bool
@@ -468,7 +472,11 @@ func scopedPreflight(ctx context.Context, cl requester, collection, typ string) 
 		out["reused"] = true
 		return out, nil
 	}
-	guard, err := mutationPreflight(ctx, cl, collection, typ)
+	var canvas [2]int
+	if scope != nil {
+		canvas = scope.canvas
+	}
+	guard, err := mutationPreflight(ctx, cl, collection, typ, canvas)
 	if err == nil && scope != nil {
 		avail := map[string]bool{}
 		if xs, ok := guard["available_requests"].([]any); ok {
@@ -662,7 +670,12 @@ func redactTraceSettings(value any) any {
 	}
 }
 
-func mutationPreflight(ctx context.Context, cl requester, collection, mutationType string) (map[string]any, error) {
+// mutationPreflight refuses a write unless OBS is in the state the configuration was
+// written for. canvas is the expected base canvas; the zero value means the default.
+func mutationPreflight(ctx context.Context, cl requester, collection, mutationType string, canvas [2]int) (map[string]any, error) {
+	if canvas == ([2]int{}) {
+		canvas = [2]int{requiredCanvasWidth, requiredCanvasHeight}
+	}
 	ev := map[string]any{"requested_collection": collection, "request_type": mutationType, "outputs": map[string]any{}}
 	v, err := request(ctx, cl, "GetVersion", nil)
 	if err != nil {
@@ -704,8 +717,9 @@ func mutationPreflight(ctx context.Context, cl requester, collection, mutationTy
 	if !wok || !hok {
 		return ev, fmt.Errorf("GetVideoSettings omitted numeric base canvas")
 	}
-	if int(w) != requiredCanvasWidth || int(h) != requiredCanvasHeight {
-		return ev, fmt.Errorf("refusing mutation on unsupported live canvas %.0fx%.0f; the provider requires %dx%d", w, h, requiredCanvasWidth, requiredCanvasHeight)
+	ev["expected_width"], ev["expected_height"] = canvas[0], canvas[1]
+	if w != float64(canvas[0]) || h != float64(canvas[1]) {
+		return ev, fmt.Errorf("refusing mutation on unexpected live canvas %vx%v; this provider is configured for %dx%d (set canvas_width and canvas_height in the provider block to manage a collection on another base canvas)", w, h, canvas[0], canvas[1])
 	}
 	outputs := ev["outputs"].(map[string]any)
 	for _, q := range []string{"GetStreamStatus", "GetRecordStatus", "GetVirtualCamStatus", "GetReplayBufferStatus"} {
@@ -1096,7 +1110,7 @@ func transformEqual(a, b transformModel) bool {
 	if a.X.IsNull() || a.X.IsUnknown() || b.X.IsNull() || b.X.IsUnknown() || a.Y.IsNull() || a.Y.IsUnknown() || b.Y.IsNull() || b.Y.IsUnknown() || a.ScaleX.IsNull() || a.ScaleX.IsUnknown() || b.ScaleX.IsNull() || b.ScaleX.IsUnknown() || a.ScaleY.IsNull() || a.ScaleY.IsUnknown() || b.ScaleY.IsNull() || b.ScaleY.IsUnknown() || a.Rotation.IsNull() || a.Rotation.IsUnknown() || b.Rotation.IsNull() || b.Rotation.IsUnknown() {
 		return false
 	}
-	return transformBoundsDifference(a, b) == "" && a.X.ValueFloat64() == b.X.ValueFloat64() && a.Y.ValueFloat64() == b.Y.ValueFloat64() && a.ScaleX.ValueFloat64() == b.ScaleX.ValueFloat64() && a.ScaleY.ValueFloat64() == b.ScaleY.ValueFloat64() && rotationMatches(a.Rotation.ValueFloat64(), b.Rotation.ValueFloat64()) && a.CropLeft.ValueInt64() == b.CropLeft.ValueInt64() && a.CropTop.ValueInt64() == b.CropTop.ValueInt64() && a.CropRight.ValueInt64() == b.CropRight.ValueInt64() && a.CropBottom.ValueInt64() == b.CropBottom.ValueInt64() && a.Alignment.ValueInt64() == b.Alignment.ValueInt64() && a.BoundsType.ValueString() == b.BoundsType.ValueString() && a.BoundsAlignment.ValueInt64() == b.BoundsAlignment.ValueInt64()
+	return transformBoundsDifference(a, b) == "" && placementFloatMatches(a.X.ValueFloat64(), b.X.ValueFloat64()) && placementFloatMatches(a.Y.ValueFloat64(), b.Y.ValueFloat64()) && placementFloatMatches(a.ScaleX.ValueFloat64(), b.ScaleX.ValueFloat64()) && placementFloatMatches(a.ScaleY.ValueFloat64(), b.ScaleY.ValueFloat64()) && rotationMatches(a.Rotation.ValueFloat64(), b.Rotation.ValueFloat64()) && a.CropLeft.ValueInt64() == b.CropLeft.ValueInt64() && a.CropTop.ValueInt64() == b.CropTop.ValueInt64() && a.CropRight.ValueInt64() == b.CropRight.ValueInt64() && a.CropBottom.ValueInt64() == b.CropBottom.ValueInt64() && a.Alignment.ValueInt64() == b.Alignment.ValueInt64() && a.BoundsType.ValueString() == b.BoundsType.ValueString() && a.BoundsAlignment.ValueInt64() == b.BoundsAlignment.ValueInt64()
 }
 
 func transformDifference(a, b transformModel) string {
@@ -1111,7 +1125,7 @@ func transformDifference(a, b transformModel) string {
 		if c.name == "rotation" && rotationMatches(c.a, c.b) {
 			continue
 		}
-		if c.a != c.b {
+		if !placementFloatMatches(c.a, c.b) {
 			return fmt.Sprintf("%s=%v want %v", c.name, c.a, c.b)
 		}
 	}

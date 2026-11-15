@@ -7,10 +7,43 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
+// placementFloatTolerance is how far a position, scale or bounds size read back from OBS
+// may sit from the authored number and still count as the same value. OBS keeps scene
+// item transforms as 32-bit floats relative to the base canvas, so on a canvas whose
+// sides do not divide evenly a write of 0.75 can read back as 0.7500000596. That is one
+// step of a 32-bit float; the tolerance allows eight (about one part in a million, a few
+// thousandths of a pixel on a 4K canvas) and nothing a person or a render could see.
+const placementFloatTolerance = 1e-6
+
+func placementFloatMatches(observed, authored float64) bool {
+	if observed == authored {
+		return true
+	}
+	if math.IsNaN(observed) || math.IsInf(observed, 0) || math.IsNaN(authored) || math.IsInf(authored, 0) {
+		return false
+	}
+	return math.Abs(observed-authored) <= placementFloatTolerance*math.Max(1, math.Max(math.Abs(observed), math.Abs(authored)))
+}
+
+// retainAuthoredFloat keeps the authored number in state when OBS holds the same value
+// up to 32-bit rounding, so a refresh does not report drift nobody caused.
+func retainAuthoredFloat(observed, authored types.Float64) types.Float64 {
+	if authored.IsNull() || authored.IsUnknown() || observed.IsNull() || observed.IsUnknown() {
+		return observed
+	}
+	if placementFloatMatches(observed.ValueFloat64(), authored.ValueFloat64()) {
+		return authored
+	}
+	return observed
+}
+
 // Optional bounds fields are unmanaged when omitted, preserving existing
 // configurations and native disabled-bounds metadata across refreshes.
 func retainAuthoredTransform(observed transformModel, authored *transformModel) *transformModel {
 	if authored != nil {
+		observed.X, observed.Y = retainAuthoredFloat(observed.X, authored.X), retainAuthoredFloat(observed.Y, authored.Y)
+		observed.ScaleX, observed.ScaleY = retainAuthoredFloat(observed.ScaleX, authored.ScaleX), retainAuthoredFloat(observed.ScaleY, authored.ScaleY)
+		observed.BoundsWidth, observed.BoundsHeight = retainAuthoredFloat(observed.BoundsWidth, authored.BoundsWidth), retainAuthoredFloat(observed.BoundsHeight, authored.BoundsHeight)
 		if !authored.Rotation.IsNull() && !authored.Rotation.IsUnknown() && !observed.Rotation.IsNull() && !observed.Rotation.IsUnknown() && rotationMatches(observed.Rotation.ValueFloat64(), authored.Rotation.ValueFloat64()) {
 			observed.Rotation = authored.Rotation
 		}
@@ -41,7 +74,7 @@ func transformBoundsDifference(observed, desired transformModel) string {
 		if field.want.IsUnknown() || field.got.IsNull() || field.got.IsUnknown() {
 			return field.name + " is unknown or null"
 		}
-		if field.got.ValueFloat64() != field.want.ValueFloat64() {
+		if !placementFloatMatches(field.got.ValueFloat64(), field.want.ValueFloat64()) {
 			return fmt.Sprintf("%s=%v want %v", field.name, field.got.ValueFloat64(), field.want.ValueFloat64())
 		}
 	}

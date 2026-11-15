@@ -11,6 +11,8 @@ const bridgeContractVersion int64 = 1
 
 // The OBS build the bridge contract and the absolute-coordinate preflight are qualified
 // against. Bumping OBS means re-qualifying both, so the values live in one place.
+// requiredCanvas* is the base canvas the native bridge (group resources) is qualified on,
+// and the canvas the websocket resources expect unless the provider block names another.
 const (
 	qualifiedOBSVersion  = "32.2.2"
 	qualifiedWSVersion   = "5.7.4"
@@ -270,7 +272,7 @@ func bridgeCapabilities(ctx context.Context, cl requester, collection, requiredR
 	if !agok || !rgok || !pcok || relativeGraph || canonicalization || absoluteGraph != guardSupported {
 		return e, fmt.Errorf("bridge absolute group policy capabilities are incomplete or inconsistent")
 	}
-	if requireAbsoluteMutation && (!absoluteGraph || !coordinateModeKnown || !absoluteCoordinates || !mainCanvasKnown || baseWidth != 1920 || baseHeight != 1080) {
+	if requireAbsoluteMutation && (!absoluteGraph || !coordinateModeKnown || !absoluteCoordinates || !mainCanvasKnown || baseWidth != requiredCanvasWidth || baseHeight != requiredCanvasHeight) {
 		return e, fmt.Errorf("bridge absolute mutation runtime is unsupported: %s", guardStatus)
 	}
 	requiredSupport := map[string]bool{

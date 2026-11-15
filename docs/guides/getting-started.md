@@ -12,7 +12,7 @@ This guide takes an empty scene collection to one scene with a coloured backgrou
 ## Before You Start
 
 1. Install OBS Studio and enable the WebSocket server under Tools, WebSocket Server Settings.
-2. Set the base canvas to 1920x1080 under Settings, Video.
+2. Leave the base canvas at 1920x1080 under Settings, Video, which is the size this guide assumes.
 3. Create a scene collection for this guide, here called My Show, and leave it selected.
 4. Stop streaming, recording, the virtual camera and the replay buffer, because the provider refuses to write while any output is active.
 

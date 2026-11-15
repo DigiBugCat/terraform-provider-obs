@@ -14,13 +14,13 @@ The provider treats OBS as a live system that people and other tools also change
 Before the first write of each operation the provider reads the OBS version, the active scene collection, the base canvas and the state of every output. It refuses to continue when any of these is true:
 
 - OBS has a scene collection active other than the `collection` of the resource.
-- The base canvas is not 1920x1080.
+- The base canvas differs from the expected size, which is 1920x1080 unless `canvas_width` and `canvas_height` say otherwise.
 - The stream, a recording, the virtual camera or the replay buffer is active.
 - The running OBS does not offer the request that the write needs.
 
 ## After a Write
 
-After each write the provider reads the object back and compares every field it set. An acknowledgement from OBS is not treated as success until the readback agrees. When the readback does not match, the operation fails and Terraform marks the resource as tainted, so the next plan starts from what OBS really holds.
+After each write the provider reads the object back and compares every field it set. An acknowledgement from OBS is not treated as success until the readback agrees. Positions, scales and bounds sizes are compared to within one part in a million, because OBS stores them as 32-bit numbers. When the readback does not match, the operation fails and Terraform marks the resource as tainted, so the next plan starts from what OBS really holds.
 
 ## One Writer at a Time
 

@@ -1,6 +1,6 @@
 {
  "page": "index",
- "seq": 25,
+ "seq": 41,
  "strokes": [
   {
    "id": "s1",
@@ -18,10 +18,86 @@
    "text": "Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording."
   },
   {
+   "id": "s40",
+   "brush": "line",
+   "text": "Use it to keep a stream layout in version control, review each change as a plan and rebuild a scene collection from text."
+  },
+  {
+   "id": "s27",
+   "brush": "heading",
+   "text": "Getting Started",
+   "level": 2
+  },
+  {
+   "id": "s28",
+   "brush": "line",
+   "text": "Four steps take an empty scene collection to a first scene with a coloured background and a filter."
+  },
+  {
+   "id": "s29",
+   "brush": "step",
+   "text": "Install OBS Studio and enable the WebSocket server under Tools, WebSocket Server Settings."
+  },
+  {
+   "id": "s30",
+   "brush": "step",
+   "text": "Create a scene collection made for Terraform, here called My Show, and leave it selected."
+  },
+  {
+   "id": "s31",
+   "brush": "step",
+   "text": "Save the configuration below as `main.tf` in an empty directory."
+  },
+  {
+   "id": "s32",
+   "brush": "step",
+   "text": "Run the three commands that follow it."
+  },
+  {
+   "id": "s33",
+   "brush": "example",
+   "text": "ex:guides/getting-started"
+  },
+  {
+   "id": "s34",
+   "brush": "shell",
+   "text": "terraform init"
+  },
+  {
+   "id": "s35",
+   "brush": "shell",
+   "text": "terraform plan -out=show.tfplan"
+  },
+  {
+   "id": "s36",
+   "brush": "shell",
+   "text": "terraform apply show.tfplan"
+  },
+  {
+   "id": "s37",
+   "brush": "line",
+   "text": "OBS shows the new scene as soon as the apply finishes, and a second plan reports no changes."
+  },
+  {
+   "id": "s38",
+   "brush": "line",
+   "text": "@guides/getting-started explains each block of this configuration and what to try next."
+  },
+  {
+   "id": "s39",
+   "brush": "warn",
+   "text": "Use a scene collection made for Terraform: `obs_scene_contents` removes every placement it does not list."
+  },
+  {
    "id": "s4",
    "brush": "heading",
    "text": "Example Usage",
    "level": 2
+  },
+  {
+   "id": "s41",
+   "brush": "line",
+   "text": "For OBS on the same machine the provider block needs no arguments."
   },
   {
    "id": "s5",
@@ -40,9 +116,9 @@
    "text": "OBS Studio with obs-websocket 5 enabled; the provider is verified against OBS 32.2.2 with obs-websocket 5.7.4."
   },
   {
-   "id": "s8",
+   "id": "s26",
    "brush": "bullet",
-   "text": "A base canvas of 1920x1080: the provider refuses to write to a collection on any other canvas size."
+   "text": "A base canvas of 1920x1080, or another size named with `canvas_width` and `canvas_height` in the provider block."
   },
   {
    "id": "s9",

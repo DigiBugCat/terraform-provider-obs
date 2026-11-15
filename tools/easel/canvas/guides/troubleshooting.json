@@ -1,7 +1,7 @@
 {
  "page": "guides/troubleshooting",
  "title": "Troubleshooting",
- "seq": 35,
+ "seq": 40,
  "strokes": [
   {
    "id": "s1",
@@ -35,20 +35,30 @@
    "text": "Select the right collection in OBS and plan again."
   },
   {
-   "id": "s7",
+   "id": "s36",
    "brush": "heading",
-   "text": "Unsupported Canvas",
+   "text": "Unexpected Canvas",
    "level": 2
   },
   {
-   "id": "s8",
+   "id": "s37",
    "brush": "literal",
-   "text": "refusing mutation on unsupported live canvas"
+   "text": "refusing mutation on unexpected live canvas"
   },
   {
-   "id": "s9",
+   "id": "s38",
    "brush": "line",
-   "text": "Set the base canvas to 1920x1080 under Settings, Video."
+   "text": "The live base canvas differs from the one the provider expects, which is 1920x1080 unless the provider block says otherwise."
+  },
+  {
+   "id": "s39",
+   "brush": "line",
+   "text": "Set `canvas_width` and `canvas_height` to the size of the collection, or change the canvas under Settings, Video."
+  },
+  {
+   "id": "s40",
+   "brush": "note",
+   "text": "Group resources work only on a 1920x1080 canvas."
   },
   {
    "id": "s10",

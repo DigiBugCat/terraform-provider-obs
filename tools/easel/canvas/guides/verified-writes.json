@@ -1,7 +1,7 @@
 {
  "page": "guides/verified-writes",
  "title": "How Writes Are Verified",
- "seq": 24,
+ "seq": 26,
  "strokes": [
   {
    "id": "s1",
@@ -35,9 +35,9 @@
    "text": "OBS has a scene collection active other than the `collection` of the resource."
   },
   {
-   "id": "s7",
+   "id": "s25",
    "brush": "bullet",
-   "text": "The base canvas is not 1920x1080."
+   "text": "The base canvas differs from the expected size, which is 1920x1080 unless `canvas_width` and `canvas_height` say otherwise."
   },
   {
    "id": "s8",
@@ -64,6 +64,11 @@
    "id": "s12",
    "brush": "line",
    "text": "An acknowledgement from OBS is not treated as success until the readback agrees."
+  },
+  {
+   "id": "s26",
+   "brush": "line",
+   "text": "Positions, scales and bounds sizes are compared to within one part in a million, because OBS stores them as 32-bit numbers."
   },
   {
    "id": "s13",

@@ -64,7 +64,7 @@ func TestMutationPreflightRefusesUnknownCanvasBeforeWrite(t *testing.T) {
 		"GetSceneCollectionList": {"currentSceneCollectionName": "Reference Terraform Lab"},
 		"GetVideoSettings":       {"baseWidth": 1920.0},
 	}}
-	_, err := mutationPreflight(context.Background(), f, "Reference Terraform Lab", "SetSceneItemTransform")
+	_, err := mutationPreflight(context.Background(), f, "Reference Terraform Lab", "SetSceneItemTransform", [2]int{})
 	if err == nil || !strings.Contains(err.Error(), "numeric base canvas") {
 		t.Fatalf("err=%v", err)
 	}
@@ -242,4 +242,84 @@ func TestTraceFailuresAndPostconditionReadErrorsAreNotDiscarded(t *testing.T) {
 			t.Fatalf("trace=%s", b)
 		}
 	})
+}
+
+func TestMutationPreflightFollowsTheConfiguredCanvas(t *testing.T) {
+	live := func(w, h float64) *fakeRequester {
+		return &fakeRequester{responses: map[string]map[string]any{
+			"GetVersion":             {"obsVersion": "32.2.2", "obsWebSocketVersion": "5.7.4", "availableRequests": []any{"SetSceneItemTransform"}},
+			"GetSceneCollectionList": {"currentSceneCollectionName": "Reference Terraform Lab"},
+			"GetVideoSettings":       {"baseWidth": w, "baseHeight": h},
+		}}
+	}
+	cases := []struct {
+		name       string
+		w, h       float64
+		canvas     [2]int
+		wantRefuse string
+	}{
+		{"default accepts 1920x1080", 1920, 1080, [2]int{}, ""},
+		{"default refuses 2560x1440", 2560, 1440, [2]int{}, "configured for 1920x1080"},
+		{"configured 2560x1440 accepted", 2560, 1440, [2]int{2560, 1440}, ""},
+		{"configured vertical 1080x1920 accepted", 1080, 1920, [2]int{1080, 1920}, ""},
+		{"configured canvas refuses the default one", 1920, 1080, [2]int{2560, 1440}, "unexpected live canvas 1920x1080"},
+		{"swapped sides are a mismatch", 1920, 1080, [2]int{1080, 1920}, "configured for 1080x1920"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := mutationPreflight(context.Background(), live(tc.w, tc.h), "Reference Terraform Lab", "SetSceneItemTransform", tc.canvas)
+			if tc.wantRefuse == "" {
+				if err != nil {
+					t.Fatalf("err=%v", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.wantRefuse) || !strings.Contains(err.Error(), "canvas_width") {
+				t.Fatalf("err=%v", err)
+			}
+		})
+	}
+}
+
+func TestScopedPreflightUsesTheSectionCanvas(t *testing.T) {
+	f := &fakeRequester{responses: map[string]map[string]any{
+		"GetVersion":             {"obsVersion": "32.2.2", "obsWebSocketVersion": "5.7.4", "availableRequests": []any{"SetSceneItemTransform"}},
+		"GetSceneCollectionList": {"currentSceneCollectionName": "Reference Terraform Lab"},
+		"GetVideoSettings":       {"baseWidth": 3840.0, "baseHeight": 2160.0},
+	}}
+	if _, err := scopedPreflight(context.Background(), exclusiveRequester{f, &preflightScope{canvas: [2]int{3840, 2160}}}, "Reference Terraform Lab", "SetSceneItemTransform"); err != nil {
+		t.Fatalf("configured canvas refused: %v", err)
+	}
+	if _, err := scopedPreflight(context.Background(), exclusiveRequester{f, &preflightScope{}}, "Reference Terraform Lab", "SetSceneItemTransform"); err == nil {
+		t.Fatal("default canvas accepted a 3840x2160 collection")
+	}
+}
+
+func TestCanvasFromConfig(t *testing.T) {
+	n, v := types.Int64Null(), types.Int64Value
+	cases := []struct {
+		name    string
+		w, h    types.Int64
+		want    [2]int
+		wantErr string
+	}{
+		{"unset", n, n, [2]int{}, ""},
+		{"both", v(2560), v(1440), [2]int{2560, 1440}, ""},
+		{"width only", v(2560), n, [2]int{}, "set together"},
+		{"height only", n, v(1440), [2]int{}, "set together"},
+		{"zero", v(0), v(1080), [2]int{}, "between 1 and"},
+		{"huge", v(1920), v(99999), [2]int{}, "between 1 and"},
+		{"unknown waits", types.Int64Unknown(), v(1080), [2]int{}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := canvasFromConfig(tc.w, tc.h)
+			if tc.wantErr == "" && (err != nil || got != tc.want) {
+				t.Fatalf("got=%v err=%v", got, err)
+			}
+			if tc.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tc.wantErr)) {
+				t.Fatalf("err=%v", err)
+			}
+		})
+	}
 }

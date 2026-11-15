@@ -1,7 +1,7 @@
 {
  "page": "guides/getting-started",
  "title": "Getting Started",
- "seq": 29,
+ "seq": 30,
  "strokes": [
   {
    "id": "s1",
@@ -25,9 +25,9 @@
    "text": "Install OBS Studio and enable the WebSocket server under Tools, WebSocket Server Settings."
   },
   {
-   "id": "s5",
+   "id": "s30",
    "brush": "step",
-   "text": "Set the base canvas to 1920x1080 under Settings, Video."
+   "text": "Leave the base canvas at 1920x1080 under Settings, Video, which is the size this guide assumes."
   },
   {
    "id": "s6",

@@ -17,13 +17,15 @@ refusing OBS write/read: current collection
 
 OBS has a different scene collection selected than the `collection` of the resource. Select the right collection in OBS and plan again.
 
-## Unsupported Canvas
+## Unexpected Canvas
 
 ```text
-refusing mutation on unsupported live canvas
+refusing mutation on unexpected live canvas
 ```
 
-Set the base canvas to 1920x1080 under Settings, Video.
+The live base canvas differs from the one the provider expects, which is 1920x1080 unless the provider block says otherwise. Set `canvas_width` and `canvas_height` to the size of the collection, or change the canvas under Settings, Video.
+
+-> Group resources work only on a 1920x1080 canvas.
 
 ## An Output Is Active
 

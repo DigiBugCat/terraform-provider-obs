@@ -1,7 +1,7 @@
 {
  "page": "readme",
  "title": "Terraform Provider for OBS Studio",
- "seq": 43,
+ "seq": 45,
  "strokes": [
   {
    "id": "s1",
@@ -97,9 +97,9 @@
    "text": "OBS Studio with obs-websocket 5 enabled; the provider is verified against OBS 32.2.2 with obs-websocket 5.7.4."
   },
   {
-   "id": "s18",
+   "id": "s44",
    "brush": "bullet",
-   "text": "A base canvas of 1920x1080."
+   "text": "A base canvas of 1920x1080, or another size set in the provider block."
   },
   {
    "id": "s19",
@@ -118,9 +118,9 @@
    "level": 2
   },
   {
-   "id": "s37",
+   "id": "s45",
    "brush": "line",
-   "text": "Before it writes, the provider checks that the right scene collection is active, that the canvas is 1920x1080 and that nothing is streaming or recording."
+   "text": "Before it writes, the provider checks that the right scene collection is active, that the canvas has the expected size and that nothing is streaming or recording."
   },
   {
    "id": "s38",

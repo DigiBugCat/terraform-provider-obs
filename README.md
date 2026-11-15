@@ -38,13 +38,13 @@ provider "obs" {
 ## Requirements
 
 - OBS Studio with obs-websocket 5 enabled; the provider is verified against OBS 32.2.2 with obs-websocket 5.7.4.
-- A base canvas of 1920x1080.
+- A base canvas of 1920x1080, or another size set in the provider block.
 - Terraform 1.5 or later.
 - The native bridge plugin from `native-bridge`, only for group resources, which today means macOS on Apple silicon.
 
 ## How a Write Works
 
-Before it writes, the provider checks that the right scene collection is active, that the canvas is 1920x1080 and that nothing is streaming or recording. After it writes, it reads the object back and reports success only when every field matches.
+Before it writes, the provider checks that the right scene collection is active, that the canvas has the expected size and that nothing is streaming or recording. After it writes, it reads the object back and reports success only when every field matches.
 
 ![A write passes a check, the write itself, a read back and a comparison, and ends as done, refused, or failed and tainted.](assets/diagrams/a-verified-write.svg)
 

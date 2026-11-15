@@ -1,14 +1,97 @@
 ---
 page_title: "obs Provider"
 description: |-
-  The obs provider manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5, and uses a small native OBS plugin for the group operations that obs-websocket does not expose. Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording.
+  The obs provider manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5, and uses a small native OBS plugin for the group operations that obs-websocket does not expose. Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording. Use it to keep a stream layout in version control, review each change as a plan and rebuild a scene collection from text.
 ---
 
 # obs Provider
 
-The obs provider manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5, and uses a small native OBS plugin for the group operations that obs-websocket does not expose. Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording.
+The obs provider manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5, and uses a small native OBS plugin for the group operations that obs-websocket does not expose. Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording. Use it to keep a stream layout in version control, review each change as a plan and rebuild a scene collection from text.
+
+## Getting Started
+
+Four steps take an empty scene collection to a first scene with a coloured background and a filter.
+
+1. Install OBS Studio and enable the WebSocket server under Tools, WebSocket Server Settings.
+2. Create a scene collection made for Terraform, here called My Show, and leave it selected.
+3. Save the configuration below as `main.tf` in an empty directory.
+4. Run the three commands that follow it.
+
+```terraform
+terraform {
+  required_providers {
+    obs = { source = "digibugcat/obs" }
+  }
+}
+
+provider "obs" {}
+
+locals {
+  collection = "My Show"
+}
+
+resource "obs_scene" "main" {
+  collection = local.collection
+  name       = "Main"
+}
+
+resource "obs_source" "background" {
+  collection        = local.collection
+  name              = "Background"
+  kind              = "color_source_v3"
+  settings_json     = jsonencode({ color = 4283782485, width = 1920, height = 1080 })
+  anchor_scene_name = obs_scene.main.name
+  anchor_scene_uuid = obs_scene.main.scene_uuid
+  anchor_enabled    = true
+  anchor_index      = 0
+  anchor_transform = {
+    x                = 0
+    y                = 0
+    scale_x          = 1
+    scale_y          = 1
+    rotation         = 0
+    crop_left        = 0
+    crop_top         = 0
+    crop_right       = 0
+    crop_bottom      = 0
+    alignment        = 5
+    bounds_type      = "OBS_BOUNDS_NONE"
+    bounds_alignment = 0
+  }
+}
+
+resource "obs_filter" "background_color" {
+  collection    = local.collection
+  parent_name   = obs_source.background.name
+  parent_uuid   = obs_source.background.input_uuid
+  name          = "Color Correction"
+  kind          = "color_filter_v2"
+  enabled       = true
+  index         = 0
+  settings_json = jsonencode({ saturation = 0.1 })
+}
+
+resource "obs_scene_contents" "main" {
+  collection = local.collection
+  scene_name = obs_scene.main.name
+  scene_uuid = obs_scene.main.scene_uuid
+  item_ids   = [obs_source.background.anchor_item_id]
+}
+```
+
+```shell
+terraform init
+terraform plan -out=show.tfplan
+terraform apply show.tfplan
+```
+
+OBS shows the new scene as soon as the apply finishes, and a second plan reports no changes. [Getting Started](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/getting-started) explains each block of this configuration and what to try next.
+
+~> Use a scene collection made for Terraform: `obs_scene_contents` removes every placement it does not list.
 
 ## Example Usage
+
+For OBS on the same machine the provider block needs no arguments.
 
 ```terraform
 terraform {
@@ -28,7 +111,7 @@ provider "obs" {
 ## Requirements
 
 - OBS Studio with obs-websocket 5 enabled; the provider is verified against OBS 32.2.2 with obs-websocket 5.7.4.
-- A base canvas of 1920x1080: the provider refuses to write to a collection on any other canvas size.
+- A base canvas of 1920x1080, or another size named with `canvas_width` and `canvas_height` in the provider block.
 - Terraform 1.5 or later.
 - The native bridge plugin, only when the configuration uses group resources; see [Groups and the Native Bridge](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/groups).
 
@@ -73,6 +156,8 @@ Every resource names its `collection`, and the provider refuses to read or write
 
 ### Optional
 
+- `canvas_height` (Number) Height in pixels of the OBS base canvas this configuration was written for. Default 1080. Set together with canvas_width.
+- `canvas_width` (Number) Width in pixels of the OBS base canvas this configuration was written for. Default 1920. Set together with canvas_height. The provider refuses to write when the live base canvas differs. Group resources work only on 1920x1080.
 - `concurrent_mutations` (Boolean) EXPERIMENTAL: run mutations on different scenes, groups and sources concurrently. Default false. OBS 32.2.2 / obs-websocket 5.7.4 stopped answering under this on the reference Mac; enable only against an OBS build verified to survive multi-session writes (env OBS_CONCURRENT_MUTATIONS=1).
 - `connections` (Number) Persistent obs-websocket connections for concurrent reads (default 10; env OBS_CONNECTIONS).
 - `host` (String) obs-websocket host. Default 127.0.0.1.
