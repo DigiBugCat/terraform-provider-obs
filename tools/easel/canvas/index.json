@@ -1,6 +1,6 @@
 {
  "page": "index",
- "seq": 41,
+ "seq": 49,
  "strokes": [
   {
    "id": "s1",
@@ -21,6 +21,47 @@
    "id": "s40",
    "brush": "line",
    "text": "Use it to keep a stream layout in version control, review each change as a plan and rebuild a scene collection from text."
+  },
+  {
+   "id": "s42",
+   "brush": "heading",
+   "text": "What You Can Manage",
+   "level": 2
+  },
+  {
+   "id": "s43",
+   "brush": "bullet",
+   "text": "Scenes and layout: @resources/scene creates a scene, @resources/scene_item adds a placement and @resources/scene_contents declares the layer order."
+  },
+  {
+   "id": "s44",
+   "brush": "bullet",
+   "text": "Sources: @resources/source creates a source of any installed kind, while @resources/input and @resources/media_input are typed for images and media files."
+  },
+  {
+   "id": "s45",
+   "brush": "bullet",
+   "text": "Filters: @resources/filter handles any installed filter kind, and @resources/color_filter is typed for Color Correction."
+  },
+  {
+   "id": "s46",
+   "brush": "bullet",
+   "text": "Animation: @resources/move_source_filter and @resources/move_value_filter manage the filters of the Move plugin."
+  },
+  {
+   "id": "s47",
+   "brush": "bullet",
+   "text": "Groups: @resources/group, @resources/group_source, @resources/group_input and @resources/group_graph manage groups and what they hold."
+  },
+  {
+   "id": "s48",
+   "brush": "bullet",
+   "text": "Setup: @resources/plugin installs an OBS plugin, and @resources/collection_seed creates an empty scene collection."
+  },
+  {
+   "id": "s49",
+   "brush": "note",
+   "text": "Group resources and the two setup resources run only on macOS; see @guides/groups and @guides/filters-and-plugins."
   },
   {
    "id": "s27",

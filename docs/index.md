@@ -8,6 +8,17 @@ description: |-
 
 The obs provider manages an OBS Studio scene collection as Terraform resources: scenes, sources, groups, filters and the placements that arrange them. It talks to OBS over obs-websocket 5, and uses a small native OBS plugin for the group operations that obs-websocket does not expose. Every write is read back from OBS before a resource is reported as created or changed, and the provider refuses to write while OBS is streaming or recording. Use it to keep a stream layout in version control, review each change as a plan and rebuild a scene collection from text.
 
+## What You Can Manage
+
+- Scenes and layout: [`obs_scene`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene) creates a scene, [`obs_scene_item`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene_item) adds a placement and [`obs_scene_contents`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/scene_contents) declares the layer order.
+- Sources: [`obs_source`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/source) creates a source of any installed kind, while [`obs_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/input) and [`obs_media_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/media_input) are typed for images and media files.
+- Filters: [`obs_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/filter) handles any installed filter kind, and [`obs_color_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/color_filter) is typed for Color Correction.
+- Animation: [`obs_move_source_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/move_source_filter) and [`obs_move_value_filter`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/move_value_filter) manage the filters of the Move plugin.
+- Groups: [`obs_group`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group), [`obs_group_source`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_source), [`obs_group_input`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_input) and [`obs_group_graph`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/group_graph) manage groups and what they hold.
+- Setup: [`obs_plugin`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/plugin) installs an OBS plugin, and [`obs_collection_seed`](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/resources/collection_seed) creates an empty scene collection.
+
+-> Group resources and the two setup resources run only on macOS; see [Groups and the Native Bridge](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/groups) and [Filters and Plugin Sources](https://registry.terraform.io/providers/DigiBugCat/obs/latest/docs/guides/filters-and-plugins).
+
 ## Getting Started
 
 Four steps take an empty scene collection to a first scene with a coloured background and a filter.

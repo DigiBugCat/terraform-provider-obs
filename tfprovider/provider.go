@@ -16,7 +16,7 @@ import (
 	"github.com/DigiBugCat/terraform-provider-obs/internal/ws"
 )
 
-const version = "0.1.8"
+const version = "0.1.9"
 
 type Provider struct{ Legacy bool }
 
